@@ -813,7 +813,7 @@
             intersects = raycaster.intersectObjects(collidables);
             if (intersects.length > 0) {
                 moveForward = false;
-                velocity.z = Math.min(0, velocity.z);
+                velocity.z = Math.max(0, velocity.z); // 修正：原為 Math.min
             }
 
             // 2. 向後檢測 (S)
@@ -821,7 +821,7 @@
             intersects = raycaster.intersectObjects(collidables);
             if (intersects.length > 0) {
                 moveBackward = false;
-                velocity.z = Math.max(0, velocity.z);
+                velocity.z = Math.min(0, velocity.z); // 修正：原為 Math.max
             }
 
             // 3. 向左檢測 (A)
@@ -829,7 +829,7 @@
             intersects = raycaster.intersectObjects(collidables);
             if (intersects.length > 0) {
                 moveLeft = false;
-                velocity.x = Math.max(0, velocity.x);
+                velocity.x = Math.min(0, velocity.x); // 修正：原為 Math.max
             }
 
             // 4. 向右檢測 (D)
@@ -837,7 +837,7 @@
             intersects = raycaster.intersectObjects(collidables);
             if (intersects.length > 0) {
                 moveRight = false;
-                velocity.x = Math.min(0, velocity.x);
+                velocity.x = Math.max(0, velocity.x); // 修正：原為 Math.min
             }
         }
 
