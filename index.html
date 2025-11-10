@@ -2,8 +2,8 @@
 <html lang="zh-Hant">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D 射擊遊戲 (v9 - 敵人子彈)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>3D 射擊遊戲 (v15 - 障礙物 indestructible)</title>
     <style>
         /* CSS 重置 */
         body, html {
@@ -13,6 +13,11 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
             background-color: #000;
             color: #fff;
+            overscroll-behavior: none;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
         }
 
         /* 遊戲畫布 */
@@ -35,8 +40,24 @@
             background-color: rgba(255, 0, 0, 0.5);
             pointer-events: none;
             z-index: 10;
-            display: none; /* 預設隱藏，遊戲中才顯示 */
+            display: none; 
         }
+
+        /* --- 遊戲中 UI --- */
+        #game-hud {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 15;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px #000;
+            display: none; 
+        }
+
+        #hud-level { margin-bottom: 10px; }
+        #hud-currency { }
 
         /* --- 血條 --- */
         #health-bar-container {
@@ -49,7 +70,8 @@
             border-radius: 5px;
             border: 2px solid #fff;
             z-index: 15;
-            display: none; /* 遊戲中才顯示 */
+            display: none; 
+            max-width: 40%; 
         }
 
         #health-bar {
@@ -61,8 +83,6 @@
         }
 
         /* --- 選單與彈窗 --- */
-
-        /* 彈窗浮層 (共用) */
         .menu-overlay {
             position: absolute;
             width: 100%;
@@ -78,13 +98,7 @@
             cursor: default;
             z-index: 20;
         }
-
-        /* 隱藏 (用於切換) */
-        .hidden {
-            display: none;
-        }
-
-        /* 選單內容框 (共用) */
+        .hidden { display: none; }
         .menu-content {
             width: 90%;
             max-width: 450px;
@@ -94,20 +108,16 @@
             max-height: 80vh;
             overflow-y: auto;
         }
-
         .menu-content h2 {
             font-size: 36px;
             font-weight: bold;
             margin-top: 10px;
             margin-bottom: 25px;
         }
-
         .menu-content p {
             margin-bottom: 15px;
             font-size: 16px;
         }
-
-        /* 選單按鈕樣式 (共用) */
         .menu-button {
             background-color: #4CAF50; /* 綠色 */
             border: none;
@@ -115,20 +125,16 @@
             padding: 15px 20px;
             text-align: center;
             text-decoration: none;
-            display: block; /* 改為 block 方便排版 */
+            display: block; 
             font-size: 16px;
             margin: 10px auto;
             cursor: pointer;
             border-radius: 8px;
             transition: background-color 0.3s;
             width: 90%;
-            box-sizing: border-box; /* 確保 padding 不會撐爆寬度 */
+            box-sizing: border-box; 
         }
-        .menu-button:hover {
-            background-color: #45a049;
-        }
-        
-        /* 特定按鈕顏色 */
+        .menu-button:hover { background-color: #45a049; }
         .btn-blue { background-color: #008CBA; }
         .btn-blue:hover { background-color: #007a9e; }
         .btn-red { background-color: #f44336; }
@@ -146,7 +152,6 @@
             padding: 10px;
             background: #222;
         }
-
         .slot-item {
             display: flex;
             justify-content: space-between;
@@ -156,20 +161,17 @@
             border-radius: 5px;
             margin-bottom: 8px;
         }
-
         .slot-item-name {
             text-align: left;
             font-weight: bold;
             flex-grow: 1;
         }
-
         .slot-button {
             padding: 5px 8px;
             font-size: 12px;
             margin-left: 5px;
             min-width: 60px;
         }
-
         #save-slot-name {
             width: 90%;
             padding: 10px;
@@ -178,7 +180,6 @@
             border: 1px solid #ccc;
             font-size: 16px;
         }
-
         #message-box {
             color: #28a745;
             margin-top: 20px;
@@ -186,12 +187,108 @@
             min-height: 25px;
             font-weight: bold;
         }
-        
         hr.divider {
             border: 0;
             height: 1px;
             background-color: #555;
             margin: 25px 0;
+        }
+        
+        /* --- Z-Index 修正 --- */
+        #win-screen { z-index: 40; }
+        #death-screen { z-index: 50; }
+        
+        /* 儲存/載入彈窗永遠在最上層 */
+        #load-menu-modal, #save-menu-modal {
+            z-index: 60;
+        }
+        
+        /* --- 觸控 UI --- */
+        #touch-controls-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 5; 
+            pointer-events: none; 
+        }
+        
+        .touch-button {
+            background-color: rgba(255, 255, 255, 0.3);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            color: white;
+            font-weight: bold;
+            pointer-events: auto; 
+            -webkit-tap-highlight-color: transparent; 
+            box-sizing: border-box; 
+        }
+        .touch-button:active {
+            background-color: rgba(255, 255, 255, 0.5);
+        }
+
+        /* 四向按鈕 */
+        #movement-buttons {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            width: 180px;
+            height: 180px;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: 1fr 1fr 1fr;
+            pointer-events: auto;
+            gap: 5px; 
+        }
+        
+        #movement-buttons .touch-button {
+            border-radius: 10px;
+            font-size: 24px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #move-up { grid-area: 1 / 2 / 2 / 3; }
+        #move-left { grid-area: 2 / 1 / 3 / 2; }
+        #move-right { grid-area: 2 / 3 / 3 / 4; }
+        #move-down { grid-area: 3 / 2 / 4 / 3; }
+        
+        /* 右側動作按鈕 */
+        #action-buttons {
+            position: fixed;
+            bottom: 40px;
+            right: 40px;
+            display: flex;
+            flex-direction: column-reverse; 
+            align-items: center;
+            pointer-events: auto;
+        }
+        #jump-button {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+        }
+        #shoot-button {
+            width: 100px;
+            height: 100px;
+            margin-bottom: 20px;
+            border-radius: 50%;
+        }
+
+        /* 觸控暫停按鈕 */
+        #pause-touch-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 60px;
+            height: 60px;
+            font-size: 20px;
+            line-height: 56px; 
+            text-align: center;
+            padding: 0;
+            z-index: 6; 
+            border-radius: 50%;
         }
 
     </style>
@@ -204,12 +301,42 @@
             <button id="new-game-button" class="menu-button">新遊戲</button>
             <button id="load-game-modal-button" class="menu-button btn-blue">載入遊戲</button>
             <p style="margin-top: 20px;">
+                <b>電腦:</b><br>
                 W, A, S, D: 移動<br>
                 Space: 跳躍<br>
                 滑鼠: 環顧四周<br>
                 點擊: 射擊<br>
                 ESC: 暫停選單
             </p>
+            <p style="margin-top: 20px;">
+                <b>平板/手機:</b><br>
+                左側按鈕: 移動<br>
+                右側按鈕: 跳躍/射擊<br>
+                滑動螢幕: 環顧四周<br>
+                右上角按鈕: 暫停
+            </p>
+        </div>
+    </div>
+
+    <!-- 選擇難度 -->
+    <div id="difficulty-select" class="menu-overlay hidden">
+        <div class="menu-content">
+            <h2>選擇難度</h2>
+            <button id="difficulty-easy" class="menu-button">簡單</button>
+            <button id="difficulty-medium" class="menu-button btn-blue">中等</button>
+            <button id="difficulty-hard" class="menu-button btn-red">困難</button>
+            <button id="difficulty-back-to-menu" class="menu-button btn-grey" style="margin-top: 30px;">回到主選單</button>
+        </div>
+    </div>
+
+    <!-- 勝利畫面 -->
+    <div id="win-screen" class="menu-overlay hidden">
+        <div class="menu-content">
+            <h2 style="color: #4CAF50;">關卡勝利！</h2>
+            <p id="currency-earned" style="font-size: 20px; margin: 20px 0;">獲得金幣: 100 (總計: 100)</p>
+            <button id="next-level-button" class="menu-button">下一關</button>
+            <button id="save-game-win-button" class="menu-button btn-blue">儲存遊戲</button>
+            <button id="quit-to-menu-win-button" class="menu-button btn-grey">回到主選單</button>
         </div>
     </div>
 
@@ -221,15 +348,15 @@
             <button id="save-game-modal-button" class="menu-button btn-blue">儲存遊戲</button>
             <button id="load-game-modal-button-pause" class="menu-button btn-blue">載入遊戲</button>
             <button id="quit-to-menu-button" class="menu-button btn-red">回到主選單</button>
-            <!-- 訊息框移到這裡 -->
             <div id="message-box"></div>
         </div>
     </div>
 
     <!-- 死亡畫面 -->
-    <div id="death-screen" class="menu-overlay hidden" style="z-index: 50;">
+    <div id="death-screen" class="menu-overlay hidden">
         <div class="menu-content">
             <h2 style="color: #f44336;">你死了</h2>
+            <p>您在 第 1 關 陣亡</p> 
             <button id="restart-button" class="menu-button">重新開始</button>
             <button id="quit-to-menu-death-button" class="menu-button btn-grey">回到主選單</button>
         </div>
@@ -240,9 +367,7 @@
         <div class="menu-content">
             <h2>載入遊戲</h2>
             <p>從瀏覽器存檔載入：</p>
-            <div id="load-slot-list" class="slot-list">
-                <!-- 存檔列表會動態生成於此 -->
-            </div>
+            <div id="load-slot-list" class="slot-list"></div>
             <hr class="divider">
             <p>或從本機 .txt 檔案載入：</p>
             <button id="import-from-txt-button" class="menu-button btn-grey">從 .txt 檔案匯入</button>
@@ -258,11 +383,7 @@
             <p>儲存至瀏覽器：</p>
             <input type="text" id="save-slot-name" placeholder="輸入新存檔名稱...">
             <button id="save-to-slot-button" class="menu-button">儲存新存檔</button>
-
-            <div id="save-slot-list" class="slot-list">
-                <!-- 存檔列表會動態生成於此 -->
-            </div>
-            
+            <div id="save-slot-list" class="slot-list"></div>
             <hr class="divider">
             <p>或匯出至本機 .txt 檔案：</p>
             <button id="export-to-txt-button" class="menu-button btn-grey">匯出目前遊戲為 .txt</button>
@@ -271,42 +392,67 @@
         </div>
     </div>
 
-
     <!-- 準心 -->
     <div id="crosshair"></div>
+
+    <!-- 遊戲 HUD -->
+    <div id="game-hud">
+        <div id="hud-level">第 1 關</div>
+        <div id="hud-currency">金幣: 0</div>
+    </div>
 
     <!-- 血條 -->
     <div id="health-bar-container">
         <div id="health-bar"></div>
     </div>
     
-    <!-- 隱藏的檔案上傳 (用於 .txt 匯入) -->
+    <!-- 觸控 UI -->
+    <div id="touch-controls-container" class="hidden"> 
+        <div id="movement-buttons">
+            <button id="move-up" class="touch-button">▲</button>
+            <button id="move-left" class="touch-button">◄</button>
+            <button id="move-right" class="touch-button">►</button>
+            <button id="move-down" class="touch-button">▼</button>
+        </div>
+        
+        <div id="action-buttons">
+            <button id="shoot-button" class="touch-button">射</button>
+            <button id="jump-button" class="touch-button">跳</button>
+        </div>
+        <button id="pause-touch-button" class="touch-button">||</button>
+    </div>
+
+    <!-- 隱藏的檔案上傳 -->
     <input type="file" id="import-file-input" accept=".txt, .json" style="display: none;">
 
     <!-- 遊戲畫布 -->
     <canvas id="game-canvas"></canvas>
 
-    <!-- 引入 Three.js 函式庫 -->
+    <!-- Three.js 函式庫 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <!-- 引入 Three.js 的 PointerLockControls (第一人稱視角控制器) -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/PointerLockControls.js"></script>
 
     <script type="module">
         // 宣告全域變數
         let scene, camera, renderer, controls, raycaster;
         
-        // --- 遊戲物件陣列 ---
-        let objects = []; // 所有可射擊的 (敵人 + 障礙物)
-        let collidables = []; // 所有可碰撞的 (敵人 + 障礙物)
-        let enemies = []; // 敵人 AI 物件
-        let obstacles = []; // 障礙物 (用於地面檢測)
-        let enemyBullets = []; // (NEW) 敵人子彈
+        let objects = []; 
+        let collidables = []; 
+        let enemies = []; 
+        let obstacles = []; 
+        let enemyBullets = []; 
         let ground;
 
-        // --- 玩家狀態 ---
-        let playerHealth = 100;
+        const isTouchDevice = ('ontouchstart' in window || navigator.maxTouchPoints > 0);
 
-        // --- 玩家移動 ---
+        let playerHealth = 100;
+        let currentLevel = 1;
+        let playerCurrency = 0;
+        let currentDifficulty = 'medium'; 
+
+        let playerGunCooldown = 300; 
+        let lastPlayerShootTime = 0;
+
         let moveForward = false;
         let moveBackward = false;
         let moveLeft = false;
@@ -320,12 +466,10 @@
         const PLAYER_HEIGHT = 1.8;
         const PLAYER_RADIUS = 0.5;
 
-        // --- AI 相關 ---
         let enemyRaycaster = new THREE.Raycaster();
         
-        // (NEW) 子彈幾何體與材質 (共用以提升效能)
         const bulletGeometry = new THREE.SphereGeometry(0.1, 8, 8);
-        const bulletMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 }); // 亮黃色
+        const bulletMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 }); 
 
         // --- UI 元素 ---
         let blocker, pauseMenu, messageBox, crosshair;
@@ -333,8 +477,14 @@
         let loadSlotList, saveSlotList;
         let importFileInput, saveSlotNameInput;
         let healthBarElement, healthBarContainer, deathScreenElement; 
+        let difficultySelectMenu, winScreenMenu, gameHud, hudLevel, hudCurrency; 
+        let touchControlsContainer;
 
-        // 存檔的 localStorage Key
+        // --- 視角觸控狀態 ---
+        let lookTouchId = null;
+        let lastLookPos = { x: 0, y: 0 };
+        const LOOK_SENSITIVITY = 0.003;
+
         const SAVE_STORAGE_KEY = '3dGameSaves';
 
         // 初始化
@@ -347,30 +497,31 @@
             healthBarElement = document.getElementById('health-bar');
             healthBarContainer = document.getElementById('health-bar-container');
             deathScreenElement = document.getElementById('death-screen');
-
+            difficultySelectMenu = document.getElementById('difficulty-select');
+            winScreenMenu = document.getElementById('win-screen');
+            gameHud = document.getElementById('game-hud');
+            hudLevel = document.getElementById('hud-level');
+            hudCurrency = document.getElementById('hud-currency');
             loadMenuModal = document.getElementById('load-menu-modal');
             saveMenuModal = document.getElementById('save-menu-modal');
             loadSlotList = document.getElementById('load-slot-list');
             saveSlotList = document.getElementById('save-slot-list');
             importFileInput = document.getElementById('import-file-input');
             saveSlotNameInput = document.getElementById('save-slot-name');
+            touchControlsContainer = document.getElementById('touch-controls-container');
 
-            // 1. 建立場景
             scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x87ceeb); // 天空藍
+            scene.background = new THREE.Color(0x87ceeb); 
             scene.fog = new THREE.Fog(0x87ceeb, 0, 200);
 
-            // 2. 建立相機 (第一人稱視角)
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
             camera.position.set(0, PLAYER_HEIGHT, 5);
 
-            // 3. 建立渲染器
             const canvas = document.getElementById('game-canvas');
             renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.shadowMap.enabled = true;
 
-            // 4. 建立光照
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
             scene.add(ambientLight);
             const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
@@ -378,62 +529,67 @@
             directionalLight.castShadow = true;
             scene.add(directionalLight);
 
-            // 5. 建立地板
             const groundGeometry = new THREE.PlaneGeometry(500, 500);
-            const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x228B22 }); // 草綠色
+            const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x228B22 }); 
             ground = new THREE.Mesh(groundGeometry, groundMaterial);
             ground.rotation.x = -Math.PI / 2; 
             ground.receiveShadow = true;
             ground.name = "ground";
             scene.add(ground);
 
-            // 6. 建立控制器 (PointerLockControls)
             setupControls();
 
-            // 7. 建立光線投射 (Raycaster)
             raycaster = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(), 0, PLAYER_RADIUS + 0.1);
 
-            // 8. 監聽視窗大小變化
             window.addEventListener('resize', onWindowResize);
 
-            // 9. 監聽射擊事件
-            window.addEventListener('click', onShoot);
+            if (isTouchDevice) {
+                initTouchControls();
+            } else {
+                document.addEventListener('keydown', onKeyDown);
+                document.addEventListener('keyup', onKeyUp);
+                window.addEventListener('click', onShoot);
+            }
 
-            // 10. 監聽 UI 按鈕
             setupButtonListeners();
         }
 
-        // --- UI 按鈕監聽 ---
+        // --- UI 按鈕監聽 (無變動) ---
         function setupButtonListeners() {
-            // 主選單
-            document.getElementById('new-game-button').addEventListener('click', startNewGame);
+            document.getElementById('new-game-button').addEventListener('click', openDifficultySelect);
             document.getElementById('load-game-modal-button').addEventListener('click', openLoadModal);
-            
-            // 暫停選單
-            document.getElementById('resume-game-button').addEventListener('click', () => controls.lock());
+            document.getElementById('difficulty-easy').addEventListener('click', () => startGame('easy'));
+            document.getElementById('difficulty-medium').addEventListener('click', () => startGame('medium'));
+            document.getElementById('difficulty-hard').addEventListener('click', () => startGame('hard'));
+            document.getElementById('difficulty-back-to-menu').addEventListener('click', quitToMainMenu);
+            document.getElementById('next-level-button').addEventListener('click', startNextLevel);
+            document.getElementById('save-game-win-button').addEventListener('click', openSaveModal);
+            document.getElementById('quit-to-menu-win-button').addEventListener('click', quitToMainMenu);
+            document.getElementById('resume-game-button').addEventListener('click', () => {
+                if (isTouchDevice) {
+                    pauseMenu.classList.add('hidden');
+                    showGameUI(true);
+                } else {
+                    controls.lock(); 
+                }
+            });
             document.getElementById('save-game-modal-button').addEventListener('click', openSaveModal);
             document.getElementById('load-game-modal-button-pause').addEventListener('click', openLoadModal);
             document.getElementById('quit-to-menu-button').addEventListener('click', quitToMainMenu);
-
-            // 死亡畫面
-            document.getElementById('restart-button').addEventListener('click', startNewGame);
+            document.getElementById('restart-button').addEventListener('click', openDifficultySelect); 
             document.getElementById('quit-to-menu-death-button').addEventListener('click', quitToMainMenu);
-
-            // 載入彈窗
             document.getElementById('import-from-txt-button').addEventListener('click', () => importFileInput.click());
             document.getElementById('close-load-modal-button').addEventListener('click', closeModals);
             importFileInput.addEventListener('change', handleFileUpload);
-            
-            // 儲存彈窗
             document.getElementById('save-to-slot-button').addEventListener('click', () => {
                 saveGameToLocalStorageSlot(saveSlotNameInput.value);
-                saveSlotNameInput.value = ""; // 清空輸入框
+                saveSlotNameInput.value = ""; 
             });
             document.getElementById('export-to-txt-button').addEventListener('click', exportGameToTxt);
             document.getElementById('close-save-modal-button').addEventListener('click', closeModals);
         }
 
-        // --- 彈窗管理 ---
+        // --- 彈窗管理 (無變動) ---
         function openLoadModal() {
             loadMenuModal.classList.remove('hidden');
             populateLoadSlotList();
@@ -447,10 +603,10 @@
             saveMenuModal.classList.add('hidden');
         }
 
-        // --- 顯示訊息 ---
+        // --- 顯示訊息 (無變動) ---
         function showMessage(msg, duration = 3000) {
             messageBox.textContent = msg;
-            messageBox.style.color = '#28a745'; // 綠色 (成功)
+            messageBox.style.color = '#28a745'; 
             setTimeout(() => {
                 if (messageBox.textContent === msg) {
                     messageBox.textContent = "";
@@ -459,7 +615,7 @@
         }
         function showErrorMessage(msg, duration = 4000) {
             messageBox.textContent = msg;
-            messageBox.style.color = '#dc3545'; // 紅色 (錯誤)
+            messageBox.style.color = '#dc3545'; 
             setTimeout(() => {
                 if (messageBox.textContent === msg) {
                     messageBox.textContent = "";
@@ -467,30 +623,22 @@
             }, duration);
         }
 
-        // --- 核心存檔邏輯 (LocalStorage) ---
-
-        // 獲取所有存檔
+        // --- 核心存檔邏輯 (LocalStorage) (無變動) ---
         function getSaves() {
             const saves = localStorage.getItem(SAVE_STORAGE_KEY);
             return saves ? JSON.parse(saves) : {};
         }
-
-        // 儲存存檔
         function saveSaves(saves) {
             localStorage.setItem(SAVE_STORAGE_KEY, JSON.stringify(saves));
         }
-
-        // 刪除存檔
         function deleteGameSlot(slotName) {
-            if (!confirm(`您確定要刪除存檔 "${slotName}" 嗎？此操作無法復原。`)) return;
+            if (!confirm(`您確定要刪除存檔 "${slotName}" 嗎？`)) return;
             const saves = getSaves();
             delete saves[slotName];
             saveSaves(saves);
             populateLoadSlotList();
             populateSaveSlotList();
         }
-
-        // 填充載入列表
         function populateLoadSlotList() {
             const saves = getSaves();
             loadSlotList.innerHTML = '';
@@ -502,24 +650,19 @@
                 const item = document.createElement('div');
                 item.className = 'slot-item';
                 item.innerHTML = `<span class="slot-item-name">${slotName}</span>`;
-                
                 const loadButton = document.createElement('button');
                 loadButton.textContent = '載入';
                 loadButton.className = 'menu-button slot-button btn-blue';
                 loadButton.onclick = () => loadGameFromLocalStorage(slotName);
-                
                 const deleteButton = document.createElement('button');
                 deleteButton.textContent = '刪除';
                 deleteButton.className = 'menu-button slot-button btn-red';
                 deleteButton.onclick = () => deleteGameSlot(slotName);
-                
                 item.appendChild(loadButton);
                 item.appendChild(deleteButton);
                 loadSlotList.appendChild(item);
             }
         }
-        
-        // 填充儲存列表 (用於覆寫)
         function populateSaveSlotList() {
             const saves = getSaves();
             saveSlotList.innerHTML = '';
@@ -531,90 +674,88 @@
                 const item = document.createElement('div');
                 item.className = 'slot-item';
                 item.innerHTML = `<span class="slot-item-name">${slotName}</span>`;
-                
                 const overwriteButton = document.createElement('button');
                 overwriteButton.textContent = '覆寫';
                 overwriteButton.className = 'menu-button slot-button btn-blue';
                 overwriteButton.onclick = () => saveGameToLocalStorageSlot(slotName);
-                
                 const deleteButton = document.createElement('button');
                 deleteButton.textContent = '刪除';
                 deleteButton.className = 'menu-button slot-button btn-red';
                 deleteButton.onclick = () => deleteGameSlot(slotName);
-
                 item.appendChild(overwriteButton);
                 item.appendChild(deleteButton);
                 saveSlotList.appendChild(item);
             }
         }
 
-        // --- 核心遊戲狀態管理 ---
-
-        // 獲取目前遊戲狀態 (打包成物件)
+        // --- 核心遊戲狀態管理 (無變動) ---
         function getCurrentGameState() {
             const saveData = {
                 playerHealth: playerHealth, 
+                playerCurrency: playerCurrency,
+                currentLevel: currentLevel,
+                currentDifficulty: currentDifficulty,
                 playerPosition: controls.getObject().position.clone(),
                 playerRotation: camera.rotation.clone(),
                 remainingObjects: []
             };
-
-            // 儲存敵人 (包含血量)
             enemies.forEach(enemy => {
                 saveData.remainingObjects.push({
                     type: 'enemy',
                     position: enemy.mesh.position.clone(),
-                    health: enemy.health 
+                    health: enemy.health,
+                    speed: enemy.speed,
+                    attackCooldown: enemy.attackCooldown
                 });
             });
-            
-            // 儲存障礙物
             obstacles.forEach(obstacle => {
                 saveData.remainingObjects.push({
                     type: 'obstacle',
                     position: obstacle.position.clone()
                 });
             });
-
-            // (NEW) 注意：我們不儲存飛行中的子彈，載入時它們會消失
             return saveData;
         }
-        
-        // 載入遊戲狀態 (從物件還原)
         function loadGameData(saveData) {
             try {
-                clearWorld(); // 清除世界
-
-                // 恢復玩家血量
+                clearWorld(); 
                 playerHealth = saveData.playerHealth || 100;
+                playerCurrency = saveData.playerCurrency || 0;
+                currentLevel = saveData.currentLevel || 1;
+                currentDifficulty = saveData.currentDifficulty || 'medium';
                 updateHealthBar();
-
-                // 重建儲存的物體
+                updateHUD();
                 saveData.remainingObjects.forEach(item => {
                     if (item.type === 'enemy') {
-                        // 傳入儲存的血量
-                        createEnemyAt(item.position, item.health); 
+                        createEnemyAt(item.position, item.health, item.speed, item.attackCooldown); 
                     } else if (item.type === 'obstacle') {
                         createObstacleAt(item.position);
                     }
                 });
-
-                // 恢復玩家位置和視角
                 controls.getObject().position.set(saveData.playerPosition.x, saveData.playerPosition.y, saveData.playerPosition.z);
-                camera.rotation.set(saveData.playerRotation._x, saveData.playerRotation._y, saveData.playerRotation._z, saveData.playerRotation._order);
-                velocity.set(0, 0, 0); // 重置速度
-                
+                const rot = saveData.playerRotation;
+                if (rot && rot._order) {
+                    camera.rotation.set(rot._x, rot._y, rot._z, rot._order);
+                } else if (rot) {
+                     camera.rotation.set(rot.x, rot.y, rot.z);
+                } else {
+                    camera.rotation.set(0, 0, 0); 
+                }
+                velocity.set(0, 0, 0); 
                 closeModals();
-                controls.lock(); // 鎖定滑鼠並開始遊戲
-
+                hideAllMenus();
+                if (isTouchDevice) {
+                    showGameUI(true); 
+                } else {
+                    controls.lock(); 
+                }
             } catch (e) {
-                alert("載入失敗！儲存檔可能已損毀。");
                 console.error("Load failed:", e);
-                quitToMainMenu(); // 載入失敗時，退回主選單
+                quitToMainMenu(); 
             }
         }
 
-        // --- LocalStorage 存取 ---
+        // --- LocalStorage 存取 (無變動) ---
         function saveGameToLocalStorageSlot(slotName) {
             slotName = slotName.trim();
             if (!slotName) {
@@ -626,39 +767,28 @@
                 const saves = getSaves();
                 saves[slotName] = currentSaveData;
                 saveSaves(saves);
-                
                 showMessage(`遊戲已儲存至： ${slotName}`);
-                populateSaveSlotList(); // 刷新列表
-                populateLoadSlotList(); // 刷新另一個列表
+                populateSaveSlotList(); 
+                populateLoadSlotList(); 
             } catch (e) {
-                showErrorMessage("儲存失敗！ (localStorage 可能已滿或停用)");
+                showErrorMessage("儲存失敗！");
                 console.error("Save failed:", e);
             }
         }
-
         function loadGameFromLocalStorage(slotName) {
             const saves = getSaves();
-            if (!saves[slotName]) {
-                alert("錯誤：找不到存檔！");
-                return;
-            }
+            if (!saves[slotName]) return;
             loadGameData(saves[slotName]);
         }
 
-        // --- .txt 檔案 匯入/匯出 ---
-        
-        // 匯出
+        // --- .txt 檔案 匯入/匯出 (無變動) ---
         function exportGameToTxt() {
             try {
                 const saveData = getCurrentGameState();
-                const jsonString = JSON.stringify(saveData, null, 2); // 格式化 JSON
+                const jsonString = JSON.stringify(saveData, null, 2); 
                 const blob = new Blob([jsonString], {type: 'text/plain;charset=utf-8'});
-                
-                // 產生一個安全的檔案名稱
                 const timestamp = new Date().toISOString().replace(/[:.-]/g, '');
                 const filename = `3d-game-save-${timestamp}.txt`;
-
-                // 觸發下載
                 const a = document.createElement('a');
                 a.href = URL.createObjectURL(blob);
                 a.download = filename;
@@ -666,368 +796,509 @@
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(a.href);
-
                 showMessage("已匯出為 .txt 檔案！");
-
             } catch (e) {
                 showErrorMessage("匯出失敗！");
                 console.error("Export failed:", e);
             }
         }
-        
-        // 匯入 (處理上傳)
         function handleFileUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
-
             const reader = new FileReader();
             reader.onload = (e) => {
                 try {
                     const text = e.target.result;
                     const saveData = JSON.parse(text);
-                    // 驗證 saveData (簡易)
                     if (saveData && saveData.playerPosition && saveData.remainingObjects) {
                         loadGameData(saveData);
-                    } else {
-                        alert("檔案格式錯誤！這不是一個有效的遊戲存檔。");
                     }
                 } catch (err) {
-                    alert("讀取檔案失敗！檔案可能已損毀或不是 JSON 格式。");
                     console.error("File parse error:", err);
                 }
-                // 重置 input，這樣才能上傳同一個檔案
                 event.target.value = null; 
             };
             reader.readAsText(file);
         }
 
-        // --- 遊戲世界生成 ---
-
-        // 清除世界 (移除所有敵人/障礙物/子彈)
+        // --- 遊戲世界生成 (v13 版本 - 無變動) ---
         function clearWorld() {
-            // 從 'collidables' 移除所有 mesh
             for (let i = collidables.length - 1; i >= 0; i--) {
                 const obj = collidables[i];
                 scene.remove(obj);
                 if (obj.geometry) obj.geometry.dispose();
                 if (obj.material) obj.material.dispose();
             }
-            // (NEW) 移除所有飛行中的子彈
             for (let i = enemyBullets.length - 1; i >= 0; i--) {
                 scene.remove(enemyBullets[i].mesh);
-                // 子彈共用幾何體/材質，所以不需 dispose
             }
-
-            // 清空所有陣列
             collidables = [];
             objects = [];
             enemies = [];
             obstacles = [];
             enemyBullets = [];
         }
-
-        // 在特定位置建立敵人 (可指定血量)
-        function createEnemyAt(pos, health = 50) {
+        function createEnemyAt(pos, health = 50, speed = 4, attackCooldown = 2000) {
             const boxGeometry = new THREE.BoxGeometry(1, 1, 1);
-            const boxMaterial = new THREE.MeshPhongMaterial({ color: 0xff0000 }); // 紅色
+            const boxMaterial = new THREE.MeshPhongMaterial({ color: 0xff0000 }); 
             const box = new THREE.Mesh(boxGeometry, boxMaterial);
             box.position.set(pos.x, pos.y, pos.z);
             box.castShadow = true;
             box.receiveShadow = true;
             box.name = "enemy";
-
-            // 建立敵人 AI 物件
             const enemy = {
                 mesh: box,
                 health: health,
-                speed: 4, // 移動速度
-                attackRange: 30, // 攻擊範圍
-                attackCooldown: 2000, // 攻擊冷卻 (毫秒)
+                speed: speed, 
+                attackRange: 30, 
+                attackCooldown: attackCooldown, 
                 lastAttackTime: 0
             };
-
             scene.add(box);
-            enemies.push(enemy); // 加入敵人 AI 列表
-            objects.push(box); // 加入可射擊列表
-            collidables.push(box); // 加入可碰撞列表
+            enemies.push(enemy); 
+            objects.push(box); 
+            collidables.push(box); 
         }
-
-        // 在特定位置建立障礙物
         function createObstacleAt(pos) {
             const crateGeometry = new THREE.BoxGeometry(3, 4, 3);
-            const crateMaterial = new THREE.MeshPhongMaterial({ color: 0x8B4513 }); // 棕色
+            const crateMaterial = new THREE.MeshPhongMaterial({ color: 0x8B4513 }); 
             const crate = new THREE.Mesh(crateGeometry, crateMaterial);
             crate.position.set(pos.x, pos.y, pos.z);
             crate.castShadow = true;
             crate.receiveShadow = true;
             crate.name = "obstacle";
-            
             scene.add(crate);
-            obstacles.push(crate); // 加入障礙物列表 (用於地面檢測)
-            objects.push(crate); // 加入可射擊列表
-            collidables.push(crate); // 加入可碰撞列表
+            obstacles.push(crate); 
+            objects.push(crate); 
+            collidables.push(crate); 
+        }
+        function spawnEnemiesForLevel() {
+            let enemyCount = 10 + (currentLevel * 3);
+            let enemyHealth = 50 + (currentLevel * 5);
+            let enemySpeed = 4 + (currentLevel * 0.1);
+            let enemyAttackCooldown = 2000 - (currentLevel * 50);
+            
+            if (currentDifficulty === 'easy') {
+                enemyCount = Math.floor(enemyCount * 0.7);
+                enemyHealth = Math.floor(enemyHealth * 0.8);
+                enemyAttackCooldown = 3000;
+            } else if (currentDifficulty === 'hard') {
+                enemyCount = Math.floor(enemyCount * 1.5);
+                enemyHealth = Math.floor(enemyHealth * 1.5);
+                enemySpeed = 5 + (currentLevel * 0.2);
+                enemyAttackCooldown = Math.max(800, 1500 - (currentLevel * 60));
+            }
+            
+            enemyCount = Math.max(5, enemyCount); 
+            enemyHealth = Math.max(50, enemyHealth);
+            enemySpeed = Math.min(enemySpeed, 8); 
+            enemyAttackCooldown = Math.max(500, enemyAttackCooldown); 
+
+            const minSpawnDist = 20; 
+            for (let i = 0; i < enemyCount; i++) {
+                let enemyPos;
+                let distance = 0;
+                do {
+                    enemyPos = {
+                        x: (Math.random() - 0.5) * 100, 
+                        y: 0.5,
+                        z: (Math.random() - 0.5) * 100  
+                    };
+                    distance = Math.sqrt(enemyPos.x * enemyPos.x + enemyPos.z * enemyPos.z);
+                } while (distance < minSpawnDist); 
+                
+                createEnemyAt(
+                    enemyPos,
+                    enemyHealth,
+                    enemySpeed,
+                    enemyAttackCooldown
+                );
+            }
+
+            const obstacleCount = 10 + Math.floor(currentLevel / 2);
+            const minObsDist = 10; 
+            for (let i = 0; i < obstacleCount; i++) {
+                let obsPos;
+                let distance = 0;
+                do {
+                    obsPos = {
+                        x: (Math.random() - 0.5) * 120, 
+                        y: 2,
+                        z: (Math.random() - 0.5) * 120  
+                    };
+                    distance = Math.sqrt(obsPos.x * obsPos.x + obsPos.z * obsPos.z);
+                } while (distance < minObsDist); 
+
+                createObstacleAt(obsPos);
+            }
         }
 
-        // 生成預設的物體 (新遊戲)
-        function spawnDefaultObjects() {
-            for (let i = 0; i < 20; i++) {
-                createEnemyAt({
-                    x: (Math.random() - 0.5) * 100,
-                    y: 0.5,
-                    z: (Math.random() - 0.5) * 100
-                }); // 使用預設血量
+        // --- 遊戲流程控制 (無變動) ---
+        function showGameUI(show) {
+            const display = show ? 'block' : 'none';
+            crosshair.style.display = display;
+            healthBarContainer.style.display = display;
+            gameHud.style.display = display;
+            if (isTouchDevice) {
+                touchControlsContainer.style.display = show ? 'block' : 'none';
             }
-            for (let i = 0; i < 10; i++) {
-                createObstacleAt({
-                    x: (Math.random() - 0.5) * 120,
-                    y: 2,
-                    z: (Math.random() - 0.5) * 120
+        }
+        function hideAllMenus() {
+            blocker.classList.add('hidden');
+            pauseMenu.classList.add('hidden');
+            deathScreenElement.classList.add('hidden');
+            winScreenMenu.classList.add('hidden');
+            difficultySelectMenu.classList.add('hidden');
+            closeModals();
+        }
+        function updateHUD() {
+            hudLevel.textContent = `第 ${currentLevel} 關`;
+            hudCurrency.textContent = `金幣: ${playerCurrency}`;
+        }
+        function openDifficultySelect() {
+            hideAllMenus();
+            difficultySelectMenu.classList.remove('hidden');
+        }
+        function startGame(difficulty) {
+            currentDifficulty = difficulty;
+            currentLevel = 1;
+            playerCurrency = 0;
+            playerHealth = 100;
+            updateHealthBar();
+            updateHUD();
+            clearWorld(); 
+            spawnEnemiesForLevel(); 
+            controls.getObject().position.set(0, PLAYER_HEIGHT, 5);
+            camera.rotation.set(0, 0, 0);
+            velocity.set(0, 0, 0); 
+            hideAllMenus();
+            if (isTouchDevice) {
+                showGameUI(true); 
+            } else {
+                controls.lock(); 
+            }
+        }
+        function showWinScreen() {
+            if (!isTouchDevice) {
+                controls.unlock();
+            }
+            showGameUI(false);
+            let baseReward = 50 + currentLevel * 10;
+            let currencyEarned = 0;
+            if (currentDifficulty === 'easy') {
+                currencyEarned = baseReward * 1.0;
+            } else if (currentDifficulty === 'medium') {
+                currencyEarned = baseReward * 1.5;
+            } else if (currentDifficulty === 'hard') {
+                currencyEarned = baseReward * 2.0;
+            }
+            currencyEarned = Math.floor(currencyEarned);
+            playerCurrency += currencyEarned;
+            document.getElementById('currency-earned').textContent = `獲得金幣: ${currencyEarned} (總計: ${playerCurrency})`;
+            hideAllMenus();
+            winScreenMenu.classList.remove('hidden');
+        }
+        function startNextLevel() {
+            currentLevel++;
+            playerHealth = 100; 
+            updateHealthBar();
+            updateHUD();
+            clearWorld();
+            spawnEnemiesForLevel();
+            controls.getObject().position.set(0, PLAYER_HEIGHT, 5);
+            velocity.set(0, 0, 0);
+            hideAllMenus();
+            if (isTouchDevice) {
+                showGameUI(true);
+            } else {
+                controls.lock();
+            }
+        }
+        function quitToMainMenu() {
+            if (!isTouchDevice) {
+                controls.unlock();
+            }
+            hideAllMenus();
+            blocker.classList.remove('hidden');
+            showGameUI(false);
+            showMessage(""); 
+        }
+
+        // --- 控制器設定 (無變動) ---
+        function setupControls() {
+            controls = new THREE.PointerLockControls(camera, document.body);
+            scene.add(controls.getObject()); 
+            if (!isTouchDevice) {
+                controls.addEventListener('lock', function () {
+                    hideAllMenus();
+                    showGameUI(true);
+                    showMessage(""); 
+                });
+                controls.addEventListener('unlock', function () {
+                    if (blocker.classList.contains('hidden') && 
+                        deathScreenElement.classList.contains('hidden') &&
+                        winScreenMenu.classList.contains('hidden') &&
+                        difficultySelectMenu.classList.contains('hidden')) { 
+                        pauseMenu.classList.remove('hidden');
+                    }
+                    showGameUI(false);
                 });
             }
         }
 
-        // --- 遊戲流程控制 ---
-
-        // 開始新遊戲
-        function startNewGame() {
-            clearWorld(); // 清除舊世界
-            spawnDefaultObjects(); // 生成新物體
-            
-            // 重置玩家
-            playerHealth = 100;
-            updateHealthBar();
-            deathScreenElement.classList.add('hidden'); // 隱藏死亡畫面
-            
-            // 重置玩家位置和視角
-            controls.getObject().position.set(0, PLAYER_HEIGHT, 5);
-            camera.rotation.set(0, 0, 0);
-            velocity.set(0, 0, 0); // 重置速度
-
-            controls.lock(); // 鎖定滑鼠
-        }
-
-        // 回到主選單
-        function quitToMainMenu() {
-            controls.unlock();
-            pauseMenu.classList.add('hidden');
-            deathScreenElement.classList.add('hidden'); // 隱藏死亡畫面
-            blocker.classList.remove('hidden');
-            crosshair.style.display = 'none'; // 隱藏準心
-            healthBarContainer.style.display = 'none'; // 隱藏血條
-            showMessage(""); // 清除訊息
-        }
-
-        // 設定控制器
-        function setupControls() {
-            controls = new THREE.PointerLockControls(camera, document.body);
-
-            controls.addEventListener('lock', function () {
-                // 進入遊戲
-                blocker.classList.add('hidden');
-                pauseMenu.classList.add('hidden');
-                deathScreenElement.classList.add('hidden');
-                closeModals(); // 關閉所有彈窗
-                crosshair.style.display = 'block'; // 顯示準心
-                healthBarContainer.style.display = 'block'; // 顯示血條
-                showMessage(""); 
-            });
-
-            controls.addEventListener('unlock', function () {
-                // 遊戲暫停 (不是回到主選單)
-                // 只有在遊戲中 (主選單/死亡畫面隱藏時) 才顯示暫停選單
-                if (blocker.classList.contains('hidden') && deathScreenElement.classList.contains('hidden')) { 
-                    pauseMenu.classList.remove('hidden');
-                }
-                crosshair.style.display = 'none'; // 隱藏準心
-                healthBarContainer.style.display = 'none'; // 隱藏血條
-            });
-
-            scene.add(controls.getObject()); // 將控制器加入場景
-
-            // 監聽鍵盤按鍵
-            const onKeyDown = function (event) {
-                switch (event.code) {
-                    case 'KeyW': moveForward = true; break;
-                    case 'KeyA': moveLeft = true; break;
-                    case 'KeyS': moveBackward = true; break;
-                    case 'KeyD': moveRight = true; break;
-                    case 'Space':
-                        if (canJump === true) velocity.y += 15;
-                        canJump = false;
-                        break;
-                }
-            };
-
-            const onKeyUp = function (event) {
-                switch (event.code) {
-                    case 'KeyW': moveForward = false; break;
-                    case 'KeyA': moveLeft = false; break;
-                    case 'KeyS': moveBackward = false; break;
-                    case 'KeyD': moveRight = false; break;
-                }
-            };
-
-            document.addEventListener('keydown', onKeyDown);
-            document.addEventListener('keyup', onKeyUp);
-        }
-
-        // --- 玩家戰鬥 ---
-
-        // 處理射擊
+        // --- (FIX) 玩家戰鬥 (已修正) ---
         function onShoot() {
-            // 只有在鎖定 (遊戲中) 且 所有選單都隱藏時 才能射擊
-            if (!controls.isLocked) return; 
-
+            if (!controls.isLocked && !isTouchDevice) return; 
+            if (!pauseMenu.classList.contains('hidden')) return;
+            const time = performance.now();
+            if (time < lastPlayerShootTime + playerGunCooldown) {
+                return; 
+            }
+            lastPlayerShootTime = time;
             const shootRaycaster = new THREE.Raycaster();
             shootRaycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-            
             const intersects = shootRaycaster.intersectObjects(objects); 
-
+            
             if (intersects.length > 0) {
                 const intersectedObject = intersects[0].object;
-
-                // 檢查是否射中敵人
                 const hitEnemy = enemies.find(e => e.mesh === intersectedObject);
+                
                 if (hitEnemy) {
-                    hitEnemy.health -= 25; // 扣血
-                    
-                    // 敵人死亡
+                    hitEnemy.health -= 25; 
                     if (hitEnemy.health <= 0) {
                         killEnemy(hitEnemy);
                     } else {
-                        // 敵人受傷閃爍
+                        // 敵人閃爍
                         hitEnemy.mesh.material.color.set(0xffffff);
                         setTimeout(() => {
-                            if (hitEnemy.mesh && hitEnemy.mesh.material) { // 確保敵人還在
+                            if (hitEnemy.mesh && hitEnemy.mesh.material) { 
                                 hitEnemy.mesh.material.color.set(0xff0000);
                             }
                         }, 100);
                     }
-                
-                // 檢查是否射中障礙物
-                } else if (obstacles.includes(intersectedObject)) {
-                    // 從所有相關陣列中移除
-                    scene.remove(intersectedObject);
-                    objects.splice(objects.indexOf(intersectedObject), 1);
-                    collidables.splice(collidables.indexOf(intersectedObject), 1);
-                    obstacles.splice(obstacles.indexOf(intersectedObject), 1);
-
-                    if (intersectedObject.geometry) intersectedObject.geometry.dispose();
-                    if (intersectedObject.material) intersectedObject.material.dispose();
-                }
+                } 
+                // (FIX) 移除射擊障礙物的 else if 區塊
             }
         }
-
-        // 移除敵人
+        
         function killEnemy(enemy) {
             scene.remove(enemy.mesh);
             objects.splice(objects.indexOf(enemy.mesh), 1);
             collidables.splice(collidables.indexOf(enemy.mesh), 1);
             enemies.splice(enemies.indexOf(enemy), 1);
-
             if (enemy.mesh.geometry) enemy.mesh.geometry.dispose();
             if (enemy.mesh.material) enemy.mesh.material.dispose();
         }
-
-        // 更新血條 UI
         function updateHealthBar() {
             const healthPercent = Math.max(0, playerHealth) / 100;
             healthBarElement.style.width = (healthPercent * 100) + '%';
         }
-
-        // 玩家受傷
         function takeDamage(amount) {
-            if (playerHealth <= 0) return; // 已經死了
-
+            if (playerHealth <= 0) return; 
             playerHealth -= amount;
             updateHealthBar();
-
-            // 螢幕閃紅
             document.body.style.backgroundColor = 'rgba(255, 0, 0, 0.5)';
             setTimeout(() => {
                 document.body.style.backgroundColor = '#000';
             }, 100);
-
             if (playerHealth <= 0) {
                 playerDie();
             }
         }
-
-        // 玩家死亡
         function playerDie() {
             playerHealth = 0;
-            controls.unlock();
+            if (!isTouchDevice) {
+                controls.unlock();
+            }
+            deathScreenElement.querySelector('p').textContent = `您在 第 ${currentLevel} 關 陣亡`;
+            hideAllMenus();
+            showGameUI(false);
             deathScreenElement.classList.remove('hidden');
-            pauseMenu.classList.add('hidden'); // 確保暫停選單隱藏
         }
 
-        // 處理視窗大小變化
+        // --- 電腦專用鍵盤 (無變動) ---
+        function onKeyDown(event) {
+            switch (event.code) {
+                case 'KeyW': moveForward = true; break;
+                case 'KeyA': moveLeft = true; break;
+                case 'KeyS': moveBackward = true; break;
+                case 'KeyD': moveRight = true; break;
+                case 'Space':
+                    if (canJump === true) velocity.y += 15;
+                    canJump = false;
+                    break;
+            }
+        }
+        function onKeyUp(event) {
+            switch (event.code) {
+                case 'KeyW': moveForward = false; break;
+                case 'KeyA': moveLeft = false; break;
+                case 'KeyS': moveBackward = false; break;
+                case 'KeyD': moveRight = false; break;
+            }
+        }
+
+        // --- 觸控控制 (v14 版本 - 無變動) ---
+        function initTouchControls() {
+            const jumpButton = document.getElementById('jump-button');
+            const shootButton = document.getElementById('shoot-button');
+            const pauseButton = document.getElementById('pause-touch-button');
+            
+            const moveUpBtn = document.getElementById('move-up');
+            const moveDownBtn = document.getElementById('move-down');
+            const moveLeftBtn = document.getElementById('move-left');
+            const moveRightBtn = document.getElementById('move-right');
+
+            // 綁定移動按鈕
+            // --- Up ---
+            moveUpBtn.addEventListener('touchstart', (e) => { e.preventDefault(); moveForward = true; }, { passive: false });
+            moveUpBtn.addEventListener('touchend', (e) => { e.preventDefault(); moveForward = false; }, { passive: false });
+            moveUpBtn.addEventListener('touchcancel', (e) => { e.preventDefault(); moveForward = false; }, { passive: false });
+            // --- Down ---
+            moveDownBtn.addEventListener('touchstart', (e) => { e.preventDefault(); moveBackward = true; }, { passive: false });
+            moveDownBtn.addEventListener('touchend', (e) => { e.preventDefault(); moveBackward = false; }, { passive: false });
+            moveDownBtn.addEventListener('touchcancel', (e) => { e.preventDefault(); moveBackward = false; }, { passive: false });
+            // --- Left ---
+            moveLeftBtn.addEventListener('touchstart', (e) => { e.preventDefault(); moveLeft = true; }, { passive: false });
+            moveLeftBtn.addEventListener('touchend', (e) => { e.preventDefault(); moveLeft = false; }, { passive: false });
+            moveLeftBtn.addEventListener('touchcancel', (e) => { e.preventDefault(); moveLeft = false; }, { passive: false });
+            // --- Right ---
+            moveRightBtn.addEventListener('touchstart', (e) => { e.preventDefault(); moveRight = true; }, { passive: false });
+            moveRightBtn.addEventListener('touchend', (e) => { e.preventDefault(); moveRight = false; }, { passive: false });
+            moveRightBtn.addEventListener('touchcancel', (e) => { e.preventDefault(); moveRight = false; }, { passive: false });
+            
+            // --- 動作按鈕 ---
+            jumpButton.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                if (canJump === true) velocity.y += 15;
+                canJump = false;
+            }, { passive: false });
+
+            shootButton.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                onShoot(); 
+            }, { passive: false });
+
+            pauseButton.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                if (pauseMenu.classList.contains('hidden') && 
+                    blocker.classList.contains('hidden') &&
+                    deathScreenElement.classList.contains('hidden')) 
+                {
+                    pauseMenu.classList.remove('hidden');
+                    showGameUI(false);
+                }
+            }, { passive: false });
+
+            // --- 視角事件 ---
+            renderer.domElement.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                if (e.target.closest('.touch-button, #movement-buttons')) {
+                    return;
+                }
+                if (lookTouchId !== null) return;
+                
+                const touch = e.changedTouches[0];
+                lookTouchId = touch.identifier;
+                lastLookPos.x = touch.clientX;
+                lastLookPos.y = touch.clientY;
+                
+                window.addEventListener('touchmove', globalTouchMove, { passive: false });
+                window.addEventListener('touchend', globalTouchEnd, { passive: false });
+                window.addEventListener('touchcancel', globalTouchEnd, { passive: false });
+            }, { passive: false });
+        }
+
+        // --- 全域觸控處理 ---
+        function globalTouchMove(e) {
+            e.preventDefault(); 
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const touch = e.changedTouches[i];
+                if (touch.identifier === lookTouchId) {
+                    handleLookMove(touch);
+                }
+            }
+        }
+        function globalTouchEnd(e) {
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const touch = e.changedTouches[i];
+                if (touch.identifier === lookTouchId) {
+                    handleLookEnd();
+                }
+            }
+        }
+
+        // --- 視角處理函式 ---
+        function handleLookMove(touch) {
+            if (lookTouchId === null) return;
+            
+            const dx = touch.clientX - lastLookPos.x;
+            const dy = touch.clientY - lastLookPos.y;
+
+            controls.getObject().rotation.y -= dx * LOOK_SENSITIVITY;
+            camera.rotation.x -= dy * LOOK_SENSITIVITY;
+            camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camera.rotation.x));
+
+            lastLookPos.x = touch.clientX;
+            lastLookPos.y = touch.clientY;
+        }
+        function handleLookEnd() {
+            lookTouchId = null;
+            
+            window.removeEventListener('touchmove', globalTouchMove);
+            window.removeEventListener('touchend', globalTouchEnd);
+            window.removeEventListener('touchcancel', globalTouchEnd);
+        }
+
+
+        // --- 視窗/物理/AI (無變動) ---
         function onWindowResize() {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         }
-
-        // --- 物理與碰撞 ---
-
-        // 碰撞偵測 (Player Horizontal)
         function checkCollisions() {
             const playerPos = controls.getObject().position;
             const cameraDir = new THREE.Vector3();
             camera.getWorldDirection(cameraDir);
             cameraDir.y = 0;
             cameraDir.normalize();
-
-            const rightDir = new THREE.Vector3().crossVectors(cameraDir, camera.up).normalize();
-            
+            const rightDir = new THREE.Vector3().crossVectors(camera.up, cameraDir).normalize();
             let intersects;
             const collisionDistance = PLAYER_RADIUS + 0.1; 
             raycaster.far = collisionDistance; 
-
-            // 1. 向前檢測 (W)
             raycaster.set(playerPos, cameraDir); 
-            intersects = raycaster.intersectObjects(collidables); // 檢查所有 (敵人 + 障礙物)
+            intersects = raycaster.intersectObjects(collidables); 
             if (intersects.length > 0) {
                 moveForward = false;
                 velocity.z = Math.max(0, velocity.z);
             }
-
-            // 2. 向後檢測 (S)
             raycaster.set(playerPos, cameraDir.clone().multiplyScalar(-1));
             intersects = raycaster.intersectObjects(collidables);
             if (intersects.length > 0) {
                 moveBackward = false;
                 velocity.z = Math.min(0, velocity.z);
             }
-
-            // 3. 向左檢測 (A)
             raycaster.set(playerPos, rightDir.clone().multiplyScalar(-1));
             intersects = raycaster.intersectObjects(collidables);
             if (intersects.length > 0) {
                 moveLeft = false;
-                velocity.x = Math.min(0, velocity.x);
+                velocity.x = Math.max(0, velocity.x); 
             }
-
-            // 4. 向右檢測 (D)
             raycaster.set(playerPos, rightDir);
             intersects = raycaster.intersectObjects(collidables);
             if (intersects.length > 0) {
                 moveRight = false;
-                velocity.x = Math.max(0, velocity.x);
+                velocity.x = Math.min(0, velocity.x); 
             }
         }
-
-        // 垂直/地面檢測
         function checkGround() {
             const downRaycaster = new THREE.Raycaster(
                 controls.getObject().position, 
                 new THREE.Vector3(0, -1, 0)
             );
-
-            // 只檢查地板和障礙物，不檢查敵人
             const allCollisions = [ground, ...obstacles];
             const intersections = downRaycaster.intersectObjects(allCollisions);
-
             if (intersections.length > 0) {
                 const distanceToGround = intersections[0].distance;
                 if (distanceToGround < (PLAYER_HEIGHT + 0.2) && velocity.y <= 0) {
@@ -1039,129 +1310,94 @@
                 canJump = false;
             }
         }
-
-        // --- (NEW) 敵人子彈邏輯 ---
-
-        // 生成一顆子彈
         function spawnEnemyBullet(enemy) {
             const playerPos = controls.getObject().position;
             const enemyPos = enemy.mesh.position;
-            
             const bullet = {
                 mesh: new THREE.Mesh(bulletGeometry, bulletMaterial),
                 direction: playerPos.clone().sub(enemyPos).normalize(),
                 speed: 40,
-                life: 100 // 子彈飛行距離 (單位)
+                life: 100 
             };
-            
-            // 子彈從敵人中心稍微偏上的位置發射
             bullet.mesh.position.copy(enemyPos).y += 0.5;
             scene.add(bullet.mesh);
             enemyBullets.push(bullet);
         }
-
-        // 更新所有飛行中的子彈
         function updateEnemyBullets(delta) {
             const playerPos = controls.getObject().position;
-
             for (let i = enemyBullets.length - 1; i >= 0; i--) {
                 const bullet = enemyBullets[i];
-                
-                // 移動子彈
                 const moveAmount = bullet.speed * delta;
                 bullet.mesh.position.add(bullet.direction.clone().multiplyScalar(moveAmount));
                 bullet.life -= moveAmount;
-
-                // 檢查是否擊中玩家
                 const distanceToPlayer = bullet.mesh.position.distanceTo(playerPos);
-                if (distanceToPlayer < PLAYER_RADIUS + 0.5) { // 0.5 是玩家的碰撞半徑
+                if (distanceToPlayer < PLAYER_RADIUS + 0.5) { 
                     takeDamage(10);
-                    // 移除子彈
                     scene.remove(bullet.mesh);
                     enemyBullets.splice(i, 1);
-                    continue; // 繼續下一個迴圈
+                    continue; 
                 }
-
-                // 子彈生命週期結束 (飛太遠)
                 if (bullet.life <= 0) {
                     scene.remove(bullet.mesh);
                     enemyBullets.splice(i, 1);
                 }
             }
         }
-
-        // --- 敵人 AI (已更新) ---
         function updateEnemies(time, delta) {
             const playerPos = controls.getObject().position;
-            
-            // 反向迴圈，以便安全刪除
             for (let i = enemies.length - 1; i >= 0; i--) { 
                 const enemy = enemies[i];
                 const enemyPos = enemy.mesh.position;
                 const distance = playerPos.distanceTo(enemyPos);
-
-                // 1. 追逐邏輯
-                if (distance > 1.5 && distance < 100) { // 保持一點距離
+                if (distance > 1.5 && distance < 100) { 
                     const dirToPlayer = playerPos.clone().sub(enemyPos).normalize();
-                    dirToPlayer.y = 0; // 不會飛
-
-                    // 讓敵人面向玩家
+                    dirToPlayer.y = 0; 
                     enemy.mesh.lookAt(playerPos.x, enemyPos.y, playerPos.z);
-
-                    // 2. 敵人碰撞邏輯 (檢查其他敵人/障礙物)
                     let canMove = true;
                     enemyRaycaster.set(enemyPos, dirToPlayer);
-                    enemyRaycaster.far = 1.0; // 檢查前方 1 單位
-                    
-                    // 檢查除了自己以外的所有可碰撞物
+                    enemyRaycaster.far = 1.0; 
                     const otherCollidables = collidables.filter(c => c !== enemy.mesh);
                     const intersects = enemyRaycaster.intersectObjects(otherCollidables);
-                    
                     if (intersects.length > 0) {
-                        canMove = false; // 被擋住了
+                        canMove = false; 
                     }
-
-                    // 3. 移動
                     if (canMove) {
                         enemy.mesh.position.add(dirToPlayer.multiplyScalar(enemy.speed * delta));
                     }
                 }
-
-                // 4. 攻擊邏輯 (已修改)
                 if (distance < enemy.attackRange && time > enemy.lastAttackTime + enemy.attackCooldown) {
                     enemy.lastAttackTime = time;
-
-                    // 檢查射線路徑上是否有障礙物
                     const dirToPlayer = playerPos.clone().sub(enemyPos).normalize();
                     enemyRaycaster.set(enemyPos, dirToPlayer);
                     enemyRaycaster.far = enemy.attackRange;
-
-                    // 只檢查障礙物
                     const obstacleHits = enemyRaycaster.intersectObjects(obstacles);
-
-                    // 如果沒打中障礙物，或者打中的障礙物比玩家還遠
                     if (obstacleHits.length === 0 || obstacleHits[0].distance > distance) {
-                        // (NEW) 不再直接扣血，而是發射子彈
                         spawnEnemyBullet(enemy);
                     }
                 }
             }
         }
 
-
-        // 遊戲主循環
+        // 遊戲主循環 (無變動)
         function animate() {
             requestAnimationFrame(animate);
 
             const time = performance.now();
             const delta = (time - prevTime) / 1000; 
 
-            // 只有在遊戲進行中 (鎖定且未死亡) 才更新
-            if (controls.isLocked === true && playerHealth > 0) {
+            const gameIsActive = (controls.isLocked || (isTouchDevice && blocker.classList.contains('hidden'))) && 
+                                  pauseMenu.classList.contains('hidden') &&
+                                  deathScreenElement.classList.contains('hidden') &&
+                                  winScreenMenu.classList.contains('hidden');
+
+            if (gameIsActive && enemies.length === 0 && playerHealth > 0) {
+                showWinScreen();
+            }
+
+            if (gameIsActive && playerHealth > 0) {
                 checkGround();
                 checkCollisions();
 
-                // 玩家移動
                 velocity.x -= velocity.x * 10.0 * delta;
                 velocity.z -= velocity.z * 10.0 * delta;
                 velocity.y -= 9.8 * 2.0 * delta; 
@@ -1172,27 +1408,21 @@
 
                 if (moveForward || moveBackward) velocity.z -= direction.z * 100.0 * delta;
                 if (moveLeft || moveRight) velocity.x -= direction.x * 100.0 * delta;
-
+                
                 controls.moveRight(-velocity.x * delta);
                 controls.moveForward(-velocity.z * delta);
                 controls.getObject().position.y += (velocity.y * delta);
 
-                // 簡易邊界 (防止掉出地圖)
                 if (controls.getObject().position.x > 245) controls.getObject().position.x = 245;
                 if (controls.getObject().position.x < -245) controls.getObject().position.x = -245;
                 if (controls.getObject().position.z > 245) controls.getObject().position.z = 245;
                 if (controls.getObject().position.z < -245) controls.getObject().position.z = -245;
 
-                // 更新敵人 AI
                 updateEnemies(time, delta);
-                
-                // (NEW) 更新敵人子彈
                 updateEnemyBullets(delta);
             }
 
             prevTime = time;
-
-            // 渲染場景
             renderer.render(scene, camera);
         }
 
