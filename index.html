@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>3D 射擊遊戲 (v15 - 障礙物 indestructible)</title>
+    <title>3D 射擊遊戲 (v16 - 彈藥系統)</title>
     <style>
         /* CSS 重置 */
         body, html {
@@ -80,6 +80,41 @@
             background-color: #4CAF50; /* 綠色 */
             border-radius: 2px;
             transition: width 0.3s ease;
+        }
+        
+        /* (NEW) 彈藥 UI */
+        #ammo-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 300px;
+            height: 25px;
+            background-color: rgba(100, 100, 100, 0.7);
+            border-radius: 5px;
+            border: 2px solid #fff;
+            z-index: 15;
+            display: none; 
+            max-width: 40%; 
+        }
+
+        #ammo-bar {
+            width: 100%;
+            height: 100%;
+            background-color: #ffc107; /* 琥珀色 */
+            border-radius: 2px;
+            transition: width 0.3s ease;
+        }
+
+        #ammo-text {
+            position: fixed;
+            bottom: 50px; /* 在彈藥條上方 */
+            right: 20px;
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px #000;
+            z-index: 15;
+            display: none; 
         }
 
         /* --- 選單與彈窗 --- */
@@ -406,6 +441,12 @@
         <div id="health-bar"></div>
     </div>
     
+    <!-- (NEW) 彈藥 UI -->
+    <div id="ammo-container">
+        <div id="ammo-bar"></div>
+    </div>
+    <div id="ammo-text">20 / 20</div>
+    
     <!-- 觸控 UI -->
     <div id="touch-controls-container" class="hidden"> 
         <div id="movement-buttons">
@@ -452,6 +493,12 @@
 
         let playerGunCooldown = 300; 
         let lastPlayerShootTime = 0;
+        
+        // (NEW) 彈藥變數
+        let playerAmmo = 20;
+        const magazineSize = 20;
+        let isReloading = false;
+        const reloadTime = 2000; // 2 秒裝填
 
         let moveForward = false;
         let moveBackward = false;
@@ -479,6 +526,8 @@
         let healthBarElement, healthBarContainer, deathScreenElement; 
         let difficultySelectMenu, winScreenMenu, gameHud, hudLevel, hudCurrency; 
         let touchControlsContainer;
+        // (NEW) 彈藥 UI 元素
+        let ammoContainer, ammoBar, ammoText;
 
         // --- 視角觸控狀態 ---
         let lookTouchId = null;
@@ -509,6 +558,11 @@
             importFileInput = document.getElementById('import-file-input');
             saveSlotNameInput = document.getElementById('save-slot-name');
             touchControlsContainer = document.getElementById('touch-controls-container');
+            
+            // (NEW) 獲取彈藥 UI
+            ammoContainer = document.getElementById('ammo-container');
+            ammoBar = document.getElementById('ammo-bar');
+            ammoText = document.getElementById('ammo-text');
 
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x87ceeb); 
@@ -552,6 +606,7 @@
             }
 
             setupButtonListeners();
+            updateAmmoUI(); // (NEW) 初始化彈藥 UI
         }
 
         // --- UI 按鈕監聽 (無變動) ---
@@ -688,13 +743,14 @@
             }
         }
 
-        // --- 核心遊戲狀態管理 (無變動) ---
+        // --- 核心遊戲狀態管理 (已更新) ---
         function getCurrentGameState() {
             const saveData = {
                 playerHealth: playerHealth, 
                 playerCurrency: playerCurrency,
                 currentLevel: currentLevel,
                 currentDifficulty: currentDifficulty,
+                playerAmmo: playerAmmo, // (NEW)
                 playerPosition: controls.getObject().position.clone(),
                 playerRotation: camera.rotation.clone(),
                 remainingObjects: []
@@ -723,8 +779,12 @@
                 playerCurrency = saveData.playerCurrency || 0;
                 currentLevel = saveData.currentLevel || 1;
                 currentDifficulty = saveData.currentDifficulty || 'medium';
+                playerAmmo = saveData.playerAmmo !== undefined ? saveData.playerAmmo : magazineSize; // (NEW)
+                isReloading = false; // (NEW)
                 updateHealthBar();
                 updateHUD();
+                updateAmmoUI(); // (NEW)
+                
                 saveData.remainingObjects.forEach(item => {
                     if (item.type === 'enemy') {
                         createEnemyAt(item.position, item.health, item.speed, item.attackCooldown); 
@@ -933,12 +993,15 @@
             }
         }
 
-        // --- 遊戲流程控制 (無變動) ---
+        // --- 遊戲流程控制 (已更新) ---
         function showGameUI(show) {
             const display = show ? 'block' : 'none';
             crosshair.style.display = display;
             healthBarContainer.style.display = display;
             gameHud.style.display = display;
+            ammoContainer.style.display = display; // (NEW)
+            ammoText.style.display = display; // (NEW)
+            
             if (isTouchDevice) {
                 touchControlsContainer.style.display = show ? 'block' : 'none';
             }
@@ -964,8 +1027,11 @@
             currentLevel = 1;
             playerCurrency = 0;
             playerHealth = 100;
+            playerAmmo = magazineSize; // (NEW)
+            isReloading = false; // (NEW)
             updateHealthBar();
             updateHUD();
+            updateAmmoUI(); // (NEW)
             clearWorld(); 
             spawnEnemiesForLevel(); 
             controls.getObject().position.set(0, PLAYER_HEIGHT, 5);
@@ -1001,8 +1067,11 @@
         function startNextLevel() {
             currentLevel++;
             playerHealth = 100; 
+            playerAmmo = magazineSize; // (NEW)
+            isReloading = false; // (NEW)
             updateHealthBar();
             updateHUD();
+            updateAmmoUI(); // (NEW)
             clearWorld();
             spawnEnemiesForLevel();
             controls.getObject().position.set(0, PLAYER_HEIGHT, 5);
@@ -1045,16 +1114,57 @@
                 });
             }
         }
+        
+        // --- (NEW) 彈藥 UI 和裝填 ---
+        function updateAmmoUI() {
+            if (isReloading) {
+                ammoText.textContent = "裝填中...";
+                ammoBar.style.width = '0%';
+            } else {
+                ammoText.textContent = `${playerAmmo} / ${magazineSize}`;
+                const ammoPercent = (playerAmmo / magazineSize) * 100;
+                ammoBar.style.width = ammoPercent + '%';
+            }
+        }
 
-        // --- (FIX) 玩家戰鬥 (已修正) ---
+        function startReload() {
+            if (isReloading) return; // 防止重複
+            isReloading = true;
+            updateAmmoUI();
+            
+            // 2 秒後完成裝填
+            setTimeout(() => {
+                playerAmmo = magazineSize;
+                isReloading = false;
+                updateAmmoUI();
+            }, reloadTime);
+        }
+
+        // --- 玩家戰鬥 (已更新) ---
         function onShoot() {
             if (!controls.isLocked && !isTouchDevice) return; 
             if (!pauseMenu.classList.contains('hidden')) return;
+
+            // (NEW) 彈藥邏輯
+            if (isReloading) {
+                return; // 正在裝填
+            }
+            
+            if (playerAmmo <= 0) {
+                startReload(); // 點擊時彈藥為 0 -> 開始裝填
+                return;
+            }
+
             const time = performance.now();
             if (time < lastPlayerShootTime + playerGunCooldown) {
-                return; 
+                return; // 射擊冷卻
             }
             lastPlayerShootTime = time;
+
+            // (NEW) 消耗彈藥
+            playerAmmo--;
+            updateAmmoUI();
+
             const shootRaycaster = new THREE.Raycaster();
             shootRaycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
             const intersects = shootRaycaster.intersectObjects(objects); 
@@ -1077,7 +1187,11 @@
                         }, 100);
                     }
                 } 
-                // (FIX) 移除射擊障礙物的 else if 區塊
+            }
+            
+            // (NEW) 射完最後一發自動裝填
+            if (playerAmmo <= 0) {
+                startReload();
             }
         }
         
@@ -1107,6 +1221,10 @@
         }
         function playerDie() {
             playerHealth = 0;
+            playerAmmo = magazineSize; // (NEW)
+            isReloading = false; // (NEW)
+            updateAmmoUI(); // (NEW)
+            
             if (!isTouchDevice) {
                 controls.unlock();
             }
