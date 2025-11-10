@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PandaPanda槍戰 v7</title>
+    <title>3D 射擊遊戲 (v9 - 敵人子彈)</title>
     <style>
         /* CSS 重置 */
         body, html {
@@ -36,6 +36,28 @@
             pointer-events: none;
             z-index: 10;
             display: none; /* 預設隱藏，遊戲中才顯示 */
+        }
+
+        /* --- 血條 --- */
+        #health-bar-container {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 300px;
+            height: 25px;
+            background-color: rgba(100, 100, 100, 0.7);
+            border-radius: 5px;
+            border: 2px solid #fff;
+            z-index: 15;
+            display: none; /* 遊戲中才顯示 */
+        }
+
+        #health-bar {
+            width: 100%;
+            height: 100%;
+            background-color: #4CAF50; /* 綠色 */
+            border-radius: 2px;
+            transition: width 0.3s ease;
         }
 
         /* --- 選單與彈窗 --- */
@@ -204,6 +226,15 @@
         </div>
     </div>
 
+    <!-- 死亡畫面 -->
+    <div id="death-screen" class="menu-overlay hidden" style="z-index: 50;">
+        <div class="menu-content">
+            <h2 style="color: #f44336;">你死了</h2>
+            <button id="restart-button" class="menu-button">重新開始</button>
+            <button id="quit-to-menu-death-button" class="menu-button btn-grey">回到主選單</button>
+        </div>
+    </div>
+
     <!-- 載入遊戲彈窗 -->
     <div id="load-menu-modal" class="menu-overlay hidden">
         <div class="menu-content">
@@ -243,6 +274,11 @@
 
     <!-- 準心 -->
     <div id="crosshair"></div>
+
+    <!-- 血條 -->
+    <div id="health-bar-container">
+        <div id="health-bar"></div>
+    </div>
     
     <!-- 隱藏的檔案上傳 (用於 .txt 匯入) -->
     <input type="file" id="import-file-input" accept=".txt, .json" style="display: none;">
@@ -259,10 +295,18 @@
         // 宣告全域變數
         let scene, camera, renderer, controls, raycaster;
         
-        let objects = [];
-        let collidables = [];
+        // --- 遊戲物件陣列 ---
+        let objects = []; // 所有可射擊的 (敵人 + 障礙物)
+        let collidables = []; // 所有可碰撞的 (敵人 + 障礙物)
+        let enemies = []; // 敵人 AI 物件
+        let obstacles = []; // 障礙物 (用於地面檢測)
+        let enemyBullets = []; // (NEW) 敵人子彈
         let ground;
 
+        // --- 玩家狀態 ---
+        let playerHealth = 100;
+
+        // --- 玩家移動 ---
         let moveForward = false;
         let moveBackward = false;
         let moveLeft = false;
@@ -273,16 +317,22 @@
         const velocity = new THREE.Vector3();
         const direction = new THREE.Vector3();
 
-        // 玩家身高
         const PLAYER_HEIGHT = 1.8;
-        // 玩家"半徑"，用於碰撞
         const PLAYER_RADIUS = 0.5;
 
-        // UI 元素
+        // --- AI 相關 ---
+        let enemyRaycaster = new THREE.Raycaster();
+        
+        // (NEW) 子彈幾何體與材質 (共用以提升效能)
+        const bulletGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+        const bulletMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 }); // 亮黃色
+
+        // --- UI 元素 ---
         let blocker, pauseMenu, messageBox, crosshair;
         let loadMenuModal, saveMenuModal;
         let loadSlotList, saveSlotList;
         let importFileInput, saveSlotNameInput;
+        let healthBarElement, healthBarContainer, deathScreenElement; 
 
         // 存檔的 localStorage Key
         const SAVE_STORAGE_KEY = '3dGameSaves';
@@ -292,8 +342,11 @@
             // 獲取 UI 元素
             blocker = document.getElementById('blocker');
             pauseMenu = document.getElementById('pause-menu');
-            messageBox = document.getElementById('message-box'); // 現在位於暫停選單中
+            messageBox = document.getElementById('message-box');
             crosshair = document.getElementById('crosshair');
+            healthBarElement = document.getElementById('health-bar');
+            healthBarContainer = document.getElementById('health-bar-container');
+            deathScreenElement = document.getElementById('death-screen');
 
             loadMenuModal = document.getElementById('load-menu-modal');
             saveMenuModal = document.getElementById('save-menu-modal');
@@ -309,13 +362,13 @@
 
             // 2. 建立相機 (第一人稱視角)
             camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.set(0, PLAYER_HEIGHT, 5); // 將相機設置在玩家身高的高度
+            camera.position.set(0, PLAYER_HEIGHT, 5);
 
             // 3. 建立渲染器
             const canvas = document.getElementById('game-canvas');
             renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.shadowMap.enabled = true; // 開啟陰影
+            renderer.shadowMap.enabled = true;
 
             // 4. 建立光照
             const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
@@ -329,9 +382,9 @@
             const groundGeometry = new THREE.PlaneGeometry(500, 500);
             const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x228B22 }); // 草綠色
             ground = new THREE.Mesh(groundGeometry, groundMaterial);
-            ground.rotation.x = -Math.PI / 2; // 旋轉使其平放
-            ground.receiveShadow = true; // 地板接收陰影
-            ground.name = "ground"; // 命名
+            ground.rotation.x = -Math.PI / 2; 
+            ground.receiveShadow = true;
+            ground.name = "ground";
             scene.add(ground);
 
             // 6. 建立控制器 (PointerLockControls)
@@ -361,6 +414,10 @@
             document.getElementById('save-game-modal-button').addEventListener('click', openSaveModal);
             document.getElementById('load-game-modal-button-pause').addEventListener('click', openLoadModal);
             document.getElementById('quit-to-menu-button').addEventListener('click', quitToMainMenu);
+
+            // 死亡畫面
+            document.getElementById('restart-button').addEventListener('click', startNewGame);
+            document.getElementById('quit-to-menu-death-button').addEventListener('click', quitToMainMenu);
 
             // 載入彈窗
             document.getElementById('import-from-txt-button').addEventListener('click', () => importFileInput.click());
@@ -496,16 +553,30 @@
         // 獲取目前遊戲狀態 (打包成物件)
         function getCurrentGameState() {
             const saveData = {
+                playerHealth: playerHealth, 
                 playerPosition: controls.getObject().position.clone(),
                 playerRotation: camera.rotation.clone(),
                 remainingObjects: []
             };
-            collidables.forEach(obj => {
+
+            // 儲存敵人 (包含血量)
+            enemies.forEach(enemy => {
                 saveData.remainingObjects.push({
-                    type: obj.name, // 'enemy' 或 'obstacle'
-                    position: obj.position.clone()
+                    type: 'enemy',
+                    position: enemy.mesh.position.clone(),
+                    health: enemy.health 
                 });
             });
+            
+            // 儲存障礙物
+            obstacles.forEach(obstacle => {
+                saveData.remainingObjects.push({
+                    type: 'obstacle',
+                    position: obstacle.position.clone()
+                });
+            });
+
+            // (NEW) 注意：我們不儲存飛行中的子彈，載入時它們會消失
             return saveData;
         }
         
@@ -514,10 +585,15 @@
             try {
                 clearWorld(); // 清除世界
 
+                // 恢復玩家血量
+                playerHealth = saveData.playerHealth || 100;
+                updateHealthBar();
+
                 // 重建儲存的物體
                 saveData.remainingObjects.forEach(item => {
                     if (item.type === 'enemy') {
-                        createEnemyAt(item.position);
+                        // 傳入儲存的血量
+                        createEnemyAt(item.position, item.health); 
                     } else if (item.type === 'obstacle') {
                         createObstacleAt(item.position);
                     }
@@ -627,20 +703,31 @@
 
         // --- 遊戲世界生成 ---
 
-        // 清除世界 (移除所有敵人/障礙物)
+        // 清除世界 (移除所有敵人/障礙物/子彈)
         function clearWorld() {
+            // 從 'collidables' 移除所有 mesh
             for (let i = collidables.length - 1; i >= 0; i--) {
                 const obj = collidables[i];
                 scene.remove(obj);
                 if (obj.geometry) obj.geometry.dispose();
                 if (obj.material) obj.material.dispose();
             }
+            // (NEW) 移除所有飛行中的子彈
+            for (let i = enemyBullets.length - 1; i >= 0; i--) {
+                scene.remove(enemyBullets[i].mesh);
+                // 子彈共用幾何體/材質，所以不需 dispose
+            }
+
+            // 清空所有陣列
             collidables = [];
             objects = [];
+            enemies = [];
+            obstacles = [];
+            enemyBullets = [];
         }
 
-        // 在特定位置建立敵人
-        function createEnemyAt(pos) {
+        // 在特定位置建立敵人 (可指定血量)
+        function createEnemyAt(pos, health = 50) {
             const boxGeometry = new THREE.BoxGeometry(1, 1, 1);
             const boxMaterial = new THREE.MeshPhongMaterial({ color: 0xff0000 }); // 紅色
             const box = new THREE.Mesh(boxGeometry, boxMaterial);
@@ -648,9 +735,21 @@
             box.castShadow = true;
             box.receiveShadow = true;
             box.name = "enemy";
+
+            // 建立敵人 AI 物件
+            const enemy = {
+                mesh: box,
+                health: health,
+                speed: 4, // 移動速度
+                attackRange: 30, // 攻擊範圍
+                attackCooldown: 2000, // 攻擊冷卻 (毫秒)
+                lastAttackTime: 0
+            };
+
             scene.add(box);
-            objects.push(box);
-            collidables.push(box);
+            enemies.push(enemy); // 加入敵人 AI 列表
+            objects.push(box); // 加入可射擊列表
+            collidables.push(box); // 加入可碰撞列表
         }
 
         // 在特定位置建立障礙物
@@ -662,9 +761,11 @@
             crate.castShadow = true;
             crate.receiveShadow = true;
             crate.name = "obstacle";
+            
             scene.add(crate);
-            objects.push(crate);
-            collidables.push(crate);
+            obstacles.push(crate); // 加入障礙物列表 (用於地面檢測)
+            objects.push(crate); // 加入可射擊列表
+            collidables.push(crate); // 加入可碰撞列表
         }
 
         // 生成預設的物體 (新遊戲)
@@ -674,7 +775,7 @@
                     x: (Math.random() - 0.5) * 100,
                     y: 0.5,
                     z: (Math.random() - 0.5) * 100
-                });
+                }); // 使用預設血量
             }
             for (let i = 0; i < 10; i++) {
                 createObstacleAt({
@@ -692,6 +793,11 @@
             clearWorld(); // 清除舊世界
             spawnDefaultObjects(); // 生成新物體
             
+            // 重置玩家
+            playerHealth = 100;
+            updateHealthBar();
+            deathScreenElement.classList.add('hidden'); // 隱藏死亡畫面
+            
             // 重置玩家位置和視角
             controls.getObject().position.set(0, PLAYER_HEIGHT, 5);
             camera.rotation.set(0, 0, 0);
@@ -702,13 +808,12 @@
 
         // 回到主選單
         function quitToMainMenu() {
-            // controls.unlock() 會自動觸發 'unlock' 事件
-            // 'unlock' 事件會顯示 pauseMenu
-            // 所以我們需要手動隱藏 pauseMenu 並顯示 blocker
             controls.unlock();
             pauseMenu.classList.add('hidden');
+            deathScreenElement.classList.add('hidden'); // 隱藏死亡畫面
             blocker.classList.remove('hidden');
             crosshair.style.display = 'none'; // 隱藏準心
+            healthBarContainer.style.display = 'none'; // 隱藏血條
             showMessage(""); // 清除訊息
         }
 
@@ -720,18 +825,21 @@
                 // 進入遊戲
                 blocker.classList.add('hidden');
                 pauseMenu.classList.add('hidden');
+                deathScreenElement.classList.add('hidden');
                 closeModals(); // 關閉所有彈窗
                 crosshair.style.display = 'block'; // 顯示準心
-                showMessage(""); // 清除可能殘留的訊息
+                healthBarContainer.style.display = 'block'; // 顯示血條
+                showMessage(""); 
             });
 
             controls.addEventListener('unlock', function () {
                 // 遊戲暫停 (不是回到主選單)
-                // 只有在遊戲中 (主選單隱藏時) 才顯示暫停選單
-                if (blocker.classList.contains('hidden')) { 
+                // 只有在遊戲中 (主選單/死亡畫面隱藏時) 才顯示暫停選單
+                if (blocker.classList.contains('hidden') && deathScreenElement.classList.contains('hidden')) { 
                     pauseMenu.classList.remove('hidden');
                 }
                 crosshair.style.display = 'none'; // 隱藏準心
+                healthBarContainer.style.display = 'none'; // 隱藏血條
             });
 
             scene.add(controls.getObject()); // 將控制器加入場景
@@ -763,6 +871,8 @@
             document.addEventListener('keyup', onKeyUp);
         }
 
+        // --- 玩家戰鬥 ---
+
         // 處理射擊
         function onShoot() {
             // 只有在鎖定 (遊戲中) 且 所有選單都隱藏時 才能射擊
@@ -775,14 +885,80 @@
 
             if (intersects.length > 0) {
                 const intersectedObject = intersects[0].object;
-                
-                scene.remove(intersectedObject);
-                objects.splice(objects.indexOf(intersectedObject), 1);
-                collidables.splice(collidables.indexOf(intersectedObject), 1);
 
-                if (intersectedObject.geometry) intersectedObject.geometry.dispose();
-                if (intersectedObject.material) intersectedObject.material.dispose();
+                // 檢查是否射中敵人
+                const hitEnemy = enemies.find(e => e.mesh === intersectedObject);
+                if (hitEnemy) {
+                    hitEnemy.health -= 25; // 扣血
+                    
+                    // 敵人死亡
+                    if (hitEnemy.health <= 0) {
+                        killEnemy(hitEnemy);
+                    } else {
+                        // 敵人受傷閃爍
+                        hitEnemy.mesh.material.color.set(0xffffff);
+                        setTimeout(() => {
+                            if (hitEnemy.mesh && hitEnemy.mesh.material) { // 確保敵人還在
+                                hitEnemy.mesh.material.color.set(0xff0000);
+                            }
+                        }, 100);
+                    }
+                
+                // 檢查是否射中障礙物
+                } else if (obstacles.includes(intersectedObject)) {
+                    // 從所有相關陣列中移除
+                    scene.remove(intersectedObject);
+                    objects.splice(objects.indexOf(intersectedObject), 1);
+                    collidables.splice(collidables.indexOf(intersectedObject), 1);
+                    obstacles.splice(obstacles.indexOf(intersectedObject), 1);
+
+                    if (intersectedObject.geometry) intersectedObject.geometry.dispose();
+                    if (intersectedObject.material) intersectedObject.material.dispose();
+                }
             }
+        }
+
+        // 移除敵人
+        function killEnemy(enemy) {
+            scene.remove(enemy.mesh);
+            objects.splice(objects.indexOf(enemy.mesh), 1);
+            collidables.splice(collidables.indexOf(enemy.mesh), 1);
+            enemies.splice(enemies.indexOf(enemy), 1);
+
+            if (enemy.mesh.geometry) enemy.mesh.geometry.dispose();
+            if (enemy.mesh.material) enemy.mesh.material.dispose();
+        }
+
+        // 更新血條 UI
+        function updateHealthBar() {
+            const healthPercent = Math.max(0, playerHealth) / 100;
+            healthBarElement.style.width = (healthPercent * 100) + '%';
+        }
+
+        // 玩家受傷
+        function takeDamage(amount) {
+            if (playerHealth <= 0) return; // 已經死了
+
+            playerHealth -= amount;
+            updateHealthBar();
+
+            // 螢幕閃紅
+            document.body.style.backgroundColor = 'rgba(255, 0, 0, 0.5)';
+            setTimeout(() => {
+                document.body.style.backgroundColor = '#000';
+            }, 100);
+
+            if (playerHealth <= 0) {
+                playerDie();
+            }
+        }
+
+        // 玩家死亡
+        function playerDie() {
+            playerHealth = 0;
+            controls.unlock();
+            deathScreenElement.classList.remove('hidden');
+            pauseMenu.classList.add('hidden'); // 確保暫停選單隱藏
         }
 
         // 處理視窗大小變化
@@ -794,7 +970,7 @@
 
         // --- 物理與碰撞 ---
 
-        // 碰撞偵測 (已修正)
+        // 碰撞偵測 (Player Horizontal)
         function checkCollisions() {
             const playerPos = controls.getObject().position;
             const cameraDir = new THREE.Vector3();
@@ -810,10 +986,10 @@
 
             // 1. 向前檢測 (W)
             raycaster.set(playerPos, cameraDir); 
-            intersects = raycaster.intersectObjects(collidables);
+            intersects = raycaster.intersectObjects(collidables); // 檢查所有 (敵人 + 障礙物)
             if (intersects.length > 0) {
                 moveForward = false;
-                velocity.z = Math.max(0, velocity.z); // 修正：原為 Math.min
+                velocity.z = Math.max(0, velocity.z);
             }
 
             // 2. 向後檢測 (S)
@@ -821,7 +997,7 @@
             intersects = raycaster.intersectObjects(collidables);
             if (intersects.length > 0) {
                 moveBackward = false;
-                velocity.z = Math.min(0, velocity.z); // 修正：原為 Math.max
+                velocity.z = Math.min(0, velocity.z);
             }
 
             // 3. 向左檢測 (A)
@@ -829,7 +1005,7 @@
             intersects = raycaster.intersectObjects(collidables);
             if (intersects.length > 0) {
                 moveLeft = false;
-                velocity.x = Math.min(0, velocity.x); // 修正：原為 Math.max
+                velocity.x = Math.min(0, velocity.x);
             }
 
             // 4. 向右檢測 (D)
@@ -837,7 +1013,7 @@
             intersects = raycaster.intersectObjects(collidables);
             if (intersects.length > 0) {
                 moveRight = false;
-                velocity.x = Math.max(0, velocity.x); // 修正：原為 Math.min
+                velocity.x = Math.max(0, velocity.x);
             }
         }
 
@@ -848,7 +1024,8 @@
                 new THREE.Vector3(0, -1, 0)
             );
 
-            const allCollisions = [ground, ...collidables];
+            // 只檢查地板和障礙物，不檢查敵人
+            const allCollisions = [ground, ...obstacles];
             const intersections = downRaycaster.intersectObjects(allCollisions);
 
             if (intersections.length > 0) {
@@ -863,19 +1040,128 @@
             }
         }
 
+        // --- (NEW) 敵人子彈邏輯 ---
+
+        // 生成一顆子彈
+        function spawnEnemyBullet(enemy) {
+            const playerPos = controls.getObject().position;
+            const enemyPos = enemy.mesh.position;
+            
+            const bullet = {
+                mesh: new THREE.Mesh(bulletGeometry, bulletMaterial),
+                direction: playerPos.clone().sub(enemyPos).normalize(),
+                speed: 40,
+                life: 100 // 子彈飛行距離 (單位)
+            };
+            
+            // 子彈從敵人中心稍微偏上的位置發射
+            bullet.mesh.position.copy(enemyPos).y += 0.5;
+            scene.add(bullet.mesh);
+            enemyBullets.push(bullet);
+        }
+
+        // 更新所有飛行中的子彈
+        function updateEnemyBullets(delta) {
+            const playerPos = controls.getObject().position;
+
+            for (let i = enemyBullets.length - 1; i >= 0; i--) {
+                const bullet = enemyBullets[i];
+                
+                // 移動子彈
+                const moveAmount = bullet.speed * delta;
+                bullet.mesh.position.add(bullet.direction.clone().multiplyScalar(moveAmount));
+                bullet.life -= moveAmount;
+
+                // 檢查是否擊中玩家
+                const distanceToPlayer = bullet.mesh.position.distanceTo(playerPos);
+                if (distanceToPlayer < PLAYER_RADIUS + 0.5) { // 0.5 是玩家的碰撞半徑
+                    takeDamage(10);
+                    // 移除子彈
+                    scene.remove(bullet.mesh);
+                    enemyBullets.splice(i, 1);
+                    continue; // 繼續下一個迴圈
+                }
+
+                // 子彈生命週期結束 (飛太遠)
+                if (bullet.life <= 0) {
+                    scene.remove(bullet.mesh);
+                    enemyBullets.splice(i, 1);
+                }
+            }
+        }
+
+        // --- 敵人 AI (已更新) ---
+        function updateEnemies(time, delta) {
+            const playerPos = controls.getObject().position;
+            
+            // 反向迴圈，以便安全刪除
+            for (let i = enemies.length - 1; i >= 0; i--) { 
+                const enemy = enemies[i];
+                const enemyPos = enemy.mesh.position;
+                const distance = playerPos.distanceTo(enemyPos);
+
+                // 1. 追逐邏輯
+                if (distance > 1.5 && distance < 100) { // 保持一點距離
+                    const dirToPlayer = playerPos.clone().sub(enemyPos).normalize();
+                    dirToPlayer.y = 0; // 不會飛
+
+                    // 讓敵人面向玩家
+                    enemy.mesh.lookAt(playerPos.x, enemyPos.y, playerPos.z);
+
+                    // 2. 敵人碰撞邏輯 (檢查其他敵人/障礙物)
+                    let canMove = true;
+                    enemyRaycaster.set(enemyPos, dirToPlayer);
+                    enemyRaycaster.far = 1.0; // 檢查前方 1 單位
+                    
+                    // 檢查除了自己以外的所有可碰撞物
+                    const otherCollidables = collidables.filter(c => c !== enemy.mesh);
+                    const intersects = enemyRaycaster.intersectObjects(otherCollidables);
+                    
+                    if (intersects.length > 0) {
+                        canMove = false; // 被擋住了
+                    }
+
+                    // 3. 移動
+                    if (canMove) {
+                        enemy.mesh.position.add(dirToPlayer.multiplyScalar(enemy.speed * delta));
+                    }
+                }
+
+                // 4. 攻擊邏輯 (已修改)
+                if (distance < enemy.attackRange && time > enemy.lastAttackTime + enemy.attackCooldown) {
+                    enemy.lastAttackTime = time;
+
+                    // 檢查射線路徑上是否有障礙物
+                    const dirToPlayer = playerPos.clone().sub(enemyPos).normalize();
+                    enemyRaycaster.set(enemyPos, dirToPlayer);
+                    enemyRaycaster.far = enemy.attackRange;
+
+                    // 只檢查障礙物
+                    const obstacleHits = enemyRaycaster.intersectObjects(obstacles);
+
+                    // 如果沒打中障礙物，或者打中的障礙物比玩家還遠
+                    if (obstacleHits.length === 0 || obstacleHits[0].distance > distance) {
+                        // (NEW) 不再直接扣血，而是發射子彈
+                        spawnEnemyBullet(enemy);
+                    }
+                }
+            }
+        }
+
 
         // 遊戲主循環
         function animate() {
             requestAnimationFrame(animate);
 
             const time = performance.now();
+            const delta = (time - prevTime) / 1000; 
 
-            if (controls.isLocked === true) {
-                const delta = (time - prevTime) / 1000; 
-
+            // 只有在遊戲進行中 (鎖定且未死亡) 才更新
+            if (controls.isLocked === true && playerHealth > 0) {
                 checkGround();
                 checkCollisions();
 
+                // 玩家移動
                 velocity.x -= velocity.x * 10.0 * delta;
                 velocity.z -= velocity.z * 10.0 * delta;
                 velocity.y -= 9.8 * 2.0 * delta; 
@@ -896,6 +1182,12 @@
                 if (controls.getObject().position.x < -245) controls.getObject().position.x = -245;
                 if (controls.getObject().position.z > 245) controls.getObject().position.z = 245;
                 if (controls.getObject().position.z < -245) controls.getObject().position.z = -245;
+
+                // 更新敵人 AI
+                updateEnemies(time, delta);
+                
+                // (NEW) 更新敵人子彈
+                updateEnemyBullets(delta);
             }
 
             prevTime = time;
