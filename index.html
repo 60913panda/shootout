@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>3D 射擊遊戲 (v21 - Boss 技能)</title>
+    <title>3D 射擊遊戲 (v23 - 商店與新武器)</title>
     <style>
         /* CSS 重置 */
         body, html {
@@ -59,7 +59,6 @@
         #hud-level { margin-bottom: 10px; }
         #hud-currency { }
         
-        /* (NEW) 瞄準 HUD */
         #target-hud {
             position: fixed;
             top: 20px;
@@ -73,20 +72,19 @@
             padding: 5px 15px;
             background-color: rgba(0, 0, 0, 0.5);
             border-radius: 5px;
-            display: none; /* 預設隱藏 */
+            display: none; 
         }
         
-        /* (NEW) Boss HUD */
         #boss-hud {
             position: fixed;
-            bottom: 60px; /* 位於彈藥條之上 */
+            bottom: 60px; 
             right: 20px;
             width: 300px;
             max-width: 40%;
             z-index: 15;
             color: white;
             text-align: right;
-            display: none; /* 預設隱藏 */
+            display: none; 
         }
         #boss-name {
             font-size: 20px;
@@ -104,7 +102,7 @@
         #boss-health-bar {
             width: 100%;
             height: 100%;
-            background-color: #f44336; /* Boss 用紅色 */
+            background-color: #f44336; 
             border-radius: 2px;
             transition: width 0.3s ease;
         }
@@ -128,7 +126,7 @@
         #health-bar {
             width: 100%;
             height: 100%;
-            background-color: #4CAF50; /* 綠色 */
+            background-color: #4CAF50; 
             border-radius: 2px;
             transition: width 0.3s ease;
         }
@@ -151,14 +149,14 @@
         #ammo-bar {
             width: 100%;
             height: 100%;
-            background-color: #ffc107; /* 琥珀色 */
+            background-color: #ffc107; 
             border-radius: 2px;
             transition: width 0.3s ease;
         }
 
         #ammo-text {
             position: fixed;
-            bottom: 50px; /* 在彈藥條上方 */
+            bottom: 50px; 
             right: 20px;
             color: white;
             font-size: 20px;
@@ -187,7 +185,7 @@
         .hidden { display: none; }
         .menu-content {
             width: 90%;
-            max-width: 450px;
+            max-width: 500px; 
             padding: 20px;
             background-color: rgba(50, 50, 50, 0.9);
             border-radius: 10px;
@@ -205,7 +203,7 @@
             font-size: 16px;
         }
         .menu-button {
-            background-color: #4CAF50; /* 綠色 */
+            background-color: #4CAF50; 
             border: none;
             color: white;
             padding: 15px 20px;
@@ -227,9 +225,33 @@
         .btn-red:hover { background-color: #d32f2f; }
         .btn-grey { background-color: #6c757d; }
         .btn-grey:hover { background-color: #5a6268; }
-        
         .btn-purple { background-color: #6f42c1; }
         .btn-purple:hover { background-color: #5a3d9a; }
+        
+        #pause-info-container {
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            text-align: left;
+            margin-top: 25px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        #pause-how-to-play, #pause-gun-stats {
+            width: 48%;
+            background: rgba(0,0,0,0.3);
+            padding: 10px;
+            border-radius: 5px;
+        }
+        #pause-gun-stats ul {
+            padding-left: 20px;
+            margin: 0;
+        }
+        h3 {
+            margin-top: 0;
+            border-bottom: 1px solid #666;
+            padding-bottom: 5px;
+        }
 
         /* --- 存檔/載入 彈窗專用 --- */
         .slot-list {
@@ -379,31 +401,33 @@
     </style>
 </head>
 <body>
-    <!-- 遊戲說明 (主選單) -->
+    <!-- 遊戲說明 (主選單) (已更新) -->
     <div id="blocker" class="menu-overlay">
         <div class="menu-content">
             <h2>3D 射擊遊戲</h2>
             <button id="new-game-button" class="menu-button">新遊戲</button>
             <button id="load-game-modal-button" class="menu-button btn-blue">載入遊戲</button>
+            <button id="shop-button" class="menu-button btn-grey">商店</button> <!-- (NEW) -->
             <p style="margin-top: 20px;">
                 <b>電腦:</b><br>
                 W, A, S, D: 移動<br>
                 Space: 跳躍<br>
                 滑鼠: 環顧四周<br>
-                按住左鍵: 連發射擊<br> <!-- (NEW) -->
+                按住左鍵: 攻擊/射擊<br>
+                滾輪 / 1(手槍), 2(小刀), 3(炸彈): 切換武器<br> <!-- (NEW) -->
                 ESC: 暫停選單
             </p>
             <p style="margin-top: 20px;">
                 <b>平板/手機:</b><br>
                 左側按鈕: 移動<br>
-                右側按鈕: 跳躍/射擊 (按住連發)<br> <!-- (NEW) -->
+                右側按鈕: 跳躍/射擊 (按住連發)<br>
                 滑動螢幕: 環顧四周<br>
                 右上角按鈕: 暫停
             </p>
         </div>
     </div>
 
-    <!-- 選擇難度 (v20) -->
+    <!-- 選擇難度 -->
     <div id="difficulty-select" class="menu-overlay hidden">
         <div class="menu-content">
             <h2>選擇難度</h2>
@@ -426,7 +450,7 @@
         </div>
     </div>
 
-    <!-- 暫停選單 -->
+    <!-- 暫停選單 (已更新) -->
     <div id="pause-menu" class="menu-overlay hidden">
         <div class="menu-content">
             <h2>遊戲暫停</h2>
@@ -435,6 +459,24 @@
             <button id="load-game-modal-button-pause" class="menu-button btn-blue">載入遊戲</button>
             <button id="quit-to-menu-button" class="menu-button btn-red">回到主選單</button>
             <div id="message-box"></div>
+            
+            <div id="pause-info-container">
+                <div id="pause-how-to-play">
+                    <h3>遊玩方式</h3>
+                    - W, A, S, D: 移動<br>
+                    - Space: 跳躍<br>
+                    - 按住左鍵: 射擊<br>
+                    - 滾輪 / 1, 2, 3: 切換武器<br>
+                    - ESC: 暫停
+                </div>
+                <div id="pause-gun-stats">
+                    <h3>目前槍枝</h3>
+                    <ul>
+                        <!-- 內容會由 JS 動態填入 -->
+                    </ul>
+                </div>
+            </div>
+            
         </div>
     </div>
 
@@ -487,10 +529,8 @@
         <div id="hud-currency">金幣: 0</div>
     </div>
     
-    <!-- (NEW) 瞄準 HUD -->
     <div id="target-hud"></div>
     
-    <!-- (NEW) Boss HUD -->
     <div id="boss-hud">
         <div id="boss-name">Boss: 2500/2500</div>
         <div id="boss-health-bar-container">
@@ -507,7 +547,7 @@
     <div id="ammo-container">
         <div id="ammo-bar"></div>
     </div>
-    <div id="ammo-text">20 / 20</div>
+    <div id="ammo-text">12 / 12</div>
     
     <!-- 觸控 UI -->
     <div id="touch-controls-container" class="hidden"> 
@@ -538,13 +578,14 @@
     <script type="module">
         // 宣告全域變數
         let scene, camera, renderer, controls, raycaster;
-        let targetRaycaster; // (NEW) 瞄準用
+        let targetRaycaster; 
         
         let objects = []; 
         let collidables = []; 
         let enemies = []; 
         let obstacles = []; 
         let enemyBullets = []; 
+        let playerGrenades = []; // (NEW) 玩家的炸彈
         let ground;
 
         const isTouchDevice = ('ontouchstart' in window || navigator.maxTouchPoints > 0);
@@ -554,15 +595,46 @@
         let playerCurrency = 0;
         let currentDifficulty = 'medium'; 
 
-        let playerGunCooldown = 300; 
+        // (NEW) 武器系統
+        const WEAPONS = {
+            pistol: {
+                name: "手槍",
+                damage: 15,
+                range: 50,
+                magazineSize: 12,
+                reloadTime: 1500,
+                cooldown: 300,
+                color: 0xaaaaaa,
+                scale: new THREE.Vector3(0.1, 0.1, 0.4)
+            },
+            knife: {
+                name: "小刀",
+                damage: 75,
+                range: 2.5, // 近戰範圍
+                magazineSize: 1, // 無彈匣
+                reloadTime: 9999999, // 無法裝填
+                cooldown: 500, // 揮舞速度
+                color: 0xcccccc,
+                scale: new THREE.Vector3(0.05, 0.05, 0.3)
+            },
+            bomb: {
+                name: "炸彈",
+                damage: 200, // 範圍傷害
+                range: 10,  // 爆炸半徑
+                magazineSize: 1, // 消耗品
+                reloadTime: 9999999, // 無法裝填
+                cooldown: 1000, // 投擲速度
+                color: 0x335533,
+                scale: new THREE.Vector3(0.15, 0.15, 0.15)
+            }
+        };
+        let playerInventory = [];
+        let currentWeaponIndex = 0;
+        let gunViewModel; // 玩家看到的槍
         let lastPlayerShootTime = 0;
-        let isFiring = false; // (NEW) 連發
-        
-        let playerAmmo = 20;
-        const magazineSize = 20;
+        let isFiring = false; 
         let isReloading = false;
-        const reloadTime = 2000; 
-
+        
         let moveForward = false;
         let moveBackward = false;
         let moveLeft = false;
@@ -580,6 +652,8 @@
         
         const bulletGeometry = new THREE.SphereGeometry(0.1, 8, 8);
         const bulletMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 }); 
+        const grenadeGeometry = new THREE.SphereGeometry(0.2, 10, 10); // (NEW)
+        const grenadeMaterial = new THREE.MeshLambertMaterial({ color: 0x226622 }); // (NEW)
 
         // --- UI 元素 ---
         let blocker, pauseMenu, messageBox, crosshair;
@@ -590,9 +664,8 @@
         let difficultySelectMenu, winScreenMenu, gameHud, hudLevel, hudCurrency; 
         let touchControlsContainer;
         let ammoContainer, ammoBar, ammoText;
-        
-        // (NEW) HUD 元素
         let targetHud, bossHud, bossName, bossHealthBar;
+        let pauseInfoGunStats; 
 
         // --- 視角觸控狀態 ---
         let lookTouchId = null;
@@ -600,9 +673,9 @@
         const LOOK_SENSITIVITY = 0.003;
 
         const SAVE_STORAGE_KEY = '3dGameSaves';
-        const BOSS_ABILITIES = ['jumper', 'teleporter', 'spinner']; // (NEW)
+        const BOSS_ABILITIES = ['jumper', 'teleporter', 'spinner']; 
 
-        // 初始化 (已更新)
+        // 初始化
         function init() {
             // 獲取 UI 元素
             blocker = document.getElementById('blocker');
@@ -627,12 +700,11 @@
             ammoContainer = document.getElementById('ammo-container');
             ammoBar = document.getElementById('ammo-bar');
             ammoText = document.getElementById('ammo-text');
-            
-            // (NEW) 獲取新 HUD
             targetHud = document.getElementById('target-hud');
             bossHud = document.getElementById('boss-hud');
             bossName = document.getElementById('boss-name');
             bossHealthBar = document.getElementById('boss-health-bar');
+            pauseInfoGunStats = document.querySelector('#pause-gun-stats ul'); 
 
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0x87ceeb); 
@@ -664,7 +736,10 @@
             setupControls();
 
             raycaster = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(), 0, PLAYER_RADIUS + 0.1);
-            targetRaycaster = new THREE.Raycaster(); // (NEW)
+            targetRaycaster = new THREE.Raycaster(); 
+
+            initWeapons();
+            camera.add(gunViewModel); 
 
             window.addEventListener('resize', onWindowResize);
 
@@ -674,30 +749,33 @@
                 document.addEventListener('keydown', onKeyDown);
                 document.addEventListener('keyup', onKeyUp);
                 
-                // (NEW) 連發
                 window.addEventListener('mousedown', (e) => {
                     if (e.button === 0) isFiring = true;
                 });
                 window.addEventListener('mouseup', (e) => {
                     if (e.button === 0) isFiring = false;
                 });
-                window.addEventListener('mouseout', () => { // 防止滑鼠移出視窗
+                window.addEventListener('mouseout', () => { 
                     isFiring = false;
                 });
+                window.addEventListener('wheel', onMouseWheel);
             }
 
             setupButtonListeners();
-            updateAmmoUI(); 
         }
 
         // --- UI 按鈕監聽 (已更新) ---
         function setupButtonListeners() {
             document.getElementById('new-game-button').addEventListener('click', openDifficultySelect);
             document.getElementById('load-game-modal-button').addEventListener('click', openLoadModal);
+            document.getElementById('shop-button').addEventListener('click', () => {
+                // (NEW) 商店按鈕，目前無功能
+                alert("商店即將開放！");
+            });
             document.getElementById('difficulty-easy').addEventListener('click', () => startGame('easy'));
             document.getElementById('difficulty-medium').addEventListener('click', () => startGame('medium'));
             document.getElementById('difficulty-hard').addEventListener('click', () => startGame('hard'));
-            document.getElementById('difficulty-extreme').addEventListener('click', () => startGame('extreme')); // (v20)
+            document.getElementById('difficulty-extreme').addEventListener('click', () => startGame('extreme')); 
             document.getElementById('difficulty-back-to-menu').addEventListener('click', quitToMainMenu);
             document.getElementById('next-level-button').addEventListener('click', startNextLevel);
             document.getElementById('save-game-win-button').addEventListener('click', openSaveModal);
@@ -726,7 +804,7 @@
             document.getElementById('close-save-modal-button').addEventListener('click', closeModals);
         }
 
-        // --- 彈窗管理 (無變動) ---
+        // --- 彈窗管理 ---
         function openLoadModal() {
             loadMenuModal.classList.remove('hidden');
             populateLoadSlotList();
@@ -740,7 +818,7 @@
             saveMenuModal.classList.add('hidden');
         }
 
-        // --- 顯示訊息 (無變動) ---
+        // --- 顯示訊息 ---
         function showMessage(msg, duration = 3000) {
             messageBox.textContent = msg;
             messageBox.style.color = '#28a745'; 
@@ -760,7 +838,7 @@
             }, duration);
         }
 
-        // --- 核心存檔邏輯 (LocalStorage) (無變動) ---
+        // --- 核心存檔邏輯 (LocalStorage) ---
         function getSaves() {
             const saves = localStorage.getItem(SAVE_STORAGE_KEY);
             return saves ? JSON.parse(saves) : {};
@@ -832,7 +910,8 @@
                 playerCurrency: playerCurrency,
                 currentLevel: currentLevel,
                 currentDifficulty: currentDifficulty,
-                playerAmmo: playerAmmo, 
+                playerInventory: playerInventory,
+                currentWeaponIndex: currentWeaponIndex,
                 playerPosition: controls.getObject().position.clone(),
                 playerRotation: camera.rotation.clone(),
                 remainingObjects: []
@@ -845,7 +924,7 @@
                     maxHealth: enemy.maxHealth, 
                     speed: enemy.speed,
                     attackCooldown: enemy.attackCooldown,
-                    bossAbility: enemy.bossAbility // (NEW) 儲存 Boss 技能
+                    bossAbility: enemy.bossAbility 
                 });
             });
             obstacles.forEach(obstacle => {
@@ -857,6 +936,16 @@
             });
             return saveData;
         }
+        
+        // (NEW) 更新預設武器
+        function getDefaultInventory() {
+            return [
+                { weapon: WEAPONS.pistol, currentAmmo: WEAPONS.pistol.magazineSize },
+                { weapon: WEAPONS.knife, currentAmmo: WEAPONS.knife.magazineSize },
+                { weapon: WEAPONS.bomb, currentAmmo: WEAPONS.bomb.magazineSize }
+            ];
+        }
+
         function loadGameData(saveData) {
             try {
                 clearWorld(); 
@@ -866,11 +955,13 @@
                 playerCurrency = saveData.playerCurrency || 0;
                 currentLevel = saveData.currentLevel || 1;
                 currentDifficulty = saveData.currentDifficulty || 'medium';
-                playerAmmo = saveData.playerAmmo !== undefined ? saveData.playerAmmo : magazineSize; 
                 isReloading = false; 
                 updateHealthBar();
                 updateHUD();
-                updateAmmoUI(); 
+                
+                playerInventory = saveData.playerInventory || getDefaultInventory();
+                currentWeaponIndex = saveData.currentWeaponIndex || 0;
+                switchWeapon(currentWeaponIndex, true); 
                 
                 saveData.remainingObjects.forEach(item => {
                     if (item.type === 'enemy' || item.type === 'tank' || item.type === 'robot' || item.type === 'boss') {
@@ -881,7 +972,7 @@
                             item.speed, 
                             item.attackCooldown, 
                             item.type,
-                            item.bossAbility // (NEW) 載入 Boss 技能
+                            item.bossAbility 
                         ); 
                     } else if (item.type === 'obstacle') {
                         createObstacleAt(item.position);
@@ -910,7 +1001,7 @@
             }
         }
 
-        // --- LocalStorage 存取 (無變動) ---
+        // --- LocalStorage 存取 ---
         function saveGameToLocalStorageSlot(slotName) {
             slotName = slotName.trim();
             if (!slotName) {
@@ -936,7 +1027,7 @@
             loadGameData(saves[slotName]);
         }
 
-        // --- .txt 檔案 匯入/匯出 (無變動) ---
+        // --- .txt 檔案 匯入/匯出 ---
         function exportGameToTxt() {
             try {
                 const saveData = getCurrentGameState();
@@ -976,12 +1067,12 @@
             reader.readAsText(file);
         }
 
-        // --- 邊界圍牆 (v19 - 無變動) ---
+        // --- 邊界圍牆 ---
         function createBoundaryWalls() {
             const wallHeight = 20;
             const wallThickness = 2;
             const mapSize = 200; 
-            const wallMaterial = new THREE.MeshLambertMaterial({ color: 0x666666 }); // (FIXED) 移除了多餘的 .Mesh
+            const wallMaterial = new THREE.MeshLambertMaterial({ color: 0x666666 }); 
 
             const wallN = new THREE.Mesh(
                 new THREE.BoxGeometry(mapSize + wallThickness, wallHeight, wallThickness),
@@ -1022,7 +1113,7 @@
             });
         }
         
-        // --- 敵人血條功能 (v20 - 無變動) ---
+        // --- 敵人血條功能 ---
         function createHealthBarSprite(health, maxHealth) {
             const canvas = document.createElement('canvas');
             canvas.width = 256;
@@ -1069,7 +1160,7 @@
             }
             for (let i = enemies.length - 1; i >= 0; i--) {
                 const enemy = enemies[i];
-                if (enemy.healthBar) { // (v20)
+                if (enemy.healthBar) { 
                     scene.remove(enemy.healthBar);
                     enemy.healthBar.material.map.dispose();
                     enemy.healthBar.material.dispose();
@@ -1078,14 +1169,19 @@
             for (let i = enemyBullets.length - 1; i >= 0; i--) {
                 scene.remove(enemyBullets[i].mesh);
             }
+            // (NEW) 清除炸彈
+            for (let i = playerGrenades.length - 1; i >= 0; i--) {
+                scene.remove(playerGrenades[i].mesh);
+            }
             collidables = [];
             objects = [];
             enemies = [];
             obstacles = [];
             enemyBullets = [];
+            playerGrenades = [];
         }
 
-        // 建立敵人 (已更新)
+        // 建立敵人
         function createEnemyAt(pos, health, maxHealth, speed, attackCooldown, type = 'enemy', bossAbility = null) {
             let size = new THREE.Vector3(1, 1, 1);
             let color = 0xff0000; 
@@ -1122,7 +1218,6 @@
             box.receiveShadow = true;
             box.name = "enemy"; 
             
-            // (NEW) Boss 沒有頭頂血條
             let healthBarComponents = {};
             if (type !== 'boss') {
                 const { sprite, texture, context } = createHealthBarSprite(health, maxHealth);
@@ -1150,14 +1245,13 @@
                 velocity: new THREE.Vector3(0, 0, 0),
                 canJump: true,
                 jumpCooldown: Math.random() * 3 + 2, 
-                // (NEW) Boss 技能
                 bossAbility: bossAbility,
                 isSpinning: false,
                 isInvincible: false,
                 spinTimer: 0,
-                spinCooldown: Math.random() * 5 + 8, // 8-13 秒
-                teleportTimer: Math.random() * 5 + 8, // 8-13 秒
-                ...healthBarComponents // (v20)
+                spinCooldown: Math.random() * 5 + 8, 
+                teleportTimer: Math.random() * 5 + 8, 
+                ...healthBarComponents 
             };
             scene.add(box);
             enemies.push(enemy); 
@@ -1181,7 +1275,7 @@
             collidables.push(crate); 
         }
 
-        // 依關卡生成 (已更新)
+        // 依關卡生成
         function spawnEnemiesForLevel() {
             let baseEnemyCount = 10 + (currentLevel * 3);
             let enemyHealth, tankHealth, robotHealth, bossBaseHealth;
@@ -1190,7 +1284,7 @@
             const mapEdge = 90; 
             
             if (currentDifficulty === 'easy') {
-                enemyHealth = 50; // 2 槍
+                enemyHealth = 50; 
                 enemySpeed = 4 + (currentLevel * 0.1);
                 enemyAttackCooldown = 3000;
                 enemyCount = Math.floor(baseEnemyCount * 0.7);
@@ -1198,8 +1292,8 @@
                 if (currentLevel % 10 === 0) bossCount = 1; 
 
             } else if (currentDifficulty === 'medium') {
-                enemyHealth = 75; // 3 槍
-                tankHealth = 125; // 5 槍
+                enemyHealth = 75; 
+                tankHealth = 125; 
                 enemySpeed = 4 + (currentLevel * 0.1);
                 enemyAttackCooldown = 2000 - (currentLevel * 50);
                 enemyCount = baseEnemyCount;
@@ -1208,9 +1302,9 @@
                 if (currentLevel % 5 === 0) bossCount = 1; 
 
             } else if (currentDifficulty === 'hard') {
-                enemyHealth = 125; // 5 槍
-                tankHealth = 175; // 7 槍
-                robotHealth = 250; // 10 槍
+                enemyHealth = 125; 
+                tankHealth = 175; 
+                robotHealth = 250; 
                 bossBaseHealth = 2500;
                 enemySpeed = 5 + (currentLevel * 0.2);
                 enemyAttackCooldown = Math.max(800, 1500 - (currentLevel * 60));
@@ -1220,9 +1314,9 @@
                 if (currentLevel % 3 === 0) bossCount = 1; 
                 
             } else if (currentDifficulty === 'extreme') { 
-                enemyHealth = 150; // 6 槍
-                tankHealth = 250; // 10 槍
-                robotHealth = 350; // 14 槍
+                enemyHealth = 150; 
+                tankHealth = 250; 
+                robotHealth = 350; 
                 bossBaseHealth = 3000;
                 enemySpeed = 6 + (currentLevel * 0.2);
                 enemyAttackCooldown = Math.max(600, 1200 - (currentLevel * 60));
@@ -1254,7 +1348,7 @@
                     let bossAbility = null;
                     if (type === 'boss') {
                         finalHealth = Math.floor(health * (1 + (currentLevel / 10)));
-                        bossAbility = BOSS_ABILITIES[Math.floor(Math.random() * BOSS_ABILITIES.length)]; // (NEW)
+                        bossAbility = BOSS_ABILITIES[Math.floor(Math.random() * BOSS_ABILITIES.length)]; 
                     }
 
                     const newEnemy = createEnemyAt(enemyPos, finalHealth, finalHealth, speed, cooldown, type, bossAbility);
@@ -1298,7 +1392,6 @@
             ammoContainer.style.display = display; 
             ammoText.style.display = display; 
             
-            // (NEW) 隱藏新 HUD
             if (!show) {
                 targetHud.style.display = 'none';
                 bossHud.style.display = 'none';
@@ -1329,11 +1422,12 @@
             currentLevel = 1;
             playerCurrency = 0;
             playerHealth = 100;
-            playerAmmo = magazineSize; 
-            isReloading = false; 
+            
+            initWeapons(); 
+            
             updateHealthBar();
             updateHUD();
-            updateAmmoUI(); 
+            
             clearWorld(); 
             createBoundaryWalls(); 
             spawnEnemiesForLevel(); 
@@ -1372,11 +1466,19 @@
         function startNextLevel() {
             currentLevel++;
             playerHealth = 100; 
-            playerAmmo = magazineSize; 
+            
+            playerInventory.forEach(invItem => {
+                // (NEW) 只重置手槍
+                if (invItem.weapon.name === "手槍") {
+                    invItem.currentAmmo = invItem.weapon.magazineSize;
+                }
+            });
             isReloading = false; 
+            updateAmmoUI(); 
+            
             updateHealthBar();
             updateHUD();
-            updateAmmoUI(); 
+            
             clearWorld();
             createBoundaryWalls(); 
             spawnEnemiesForLevel();
@@ -1399,7 +1501,7 @@
             showMessage(""); 
         }
 
-        // --- 控制器設定 (無變動) ---
+        // --- 控制器設定 ---
         function setupControls() {
             controls = new THREE.PointerLockControls(camera, document.body);
             scene.add(controls.getObject()); 
@@ -1408,9 +1510,11 @@
                     hideAllMenus();
                     showGameUI(true);
                     showMessage(""); 
-                    isFiring = false; // (NEW) 解除鎖定時停止射擊
+                    isFiring = false; 
                 });
                 controls.addEventListener('unlock', function () {
+                    updatePauseMenuInfo(); 
+                    
                     if (blocker.classList.contains('hidden') && 
                         deathScreenElement.classList.contains('hidden') &&
                         winScreenMenu.classList.contains('hidden') &&
@@ -1418,102 +1522,304 @@
                         pauseMenu.classList.remove('hidden');
                     }
                     showGameUI(false);
-                    isFiring = false; // (NEW) 鎖定解除時停止射擊
+                    isFiring = false; 
                 });
             }
         }
         
-        // --- 彈藥 UI 和裝填 (v16 - 無變動) ---
+        // --- (NEW) 武器系統 ---
+        function initWeapons() {
+            playerInventory = getDefaultInventory();
+            currentWeaponIndex = 0;
+            
+            if (!gunViewModel) {
+                gunViewModel = new THREE.Group();
+            }
+            
+            switchWeapon(0, true); 
+        }
+
+        function createGunMesh(weapon) {
+            const material = new THREE.MeshPhongMaterial({ color: weapon.color });
+            const geometry = new THREE.BoxGeometry(weapon.scale.x, weapon.scale.y, weapon.scale.z);
+            const mesh = new THREE.Mesh(geometry, material);
+            
+            mesh.position.set(0.3, -0.2, -0.5); 
+            mesh.rotation.y = -0.1; 
+            return mesh;
+        }
+
+        function switchWeapon(index, force = false) {
+            if ((index === currentWeaponIndex && !force) || isReloading) return;
+            
+            currentWeaponIndex = index;
+            
+            const weapon = playerInventory[currentWeaponIndex].weapon;
+            
+            while (gunViewModel.children.length > 0) {
+                gunViewModel.remove(gunViewModel.children[0]);
+            }
+            
+            const gunMesh = createGunMesh(weapon);
+            gunViewModel.add(gunMesh);
+            
+            updateAmmoUI();
+            updatePauseMenuInfo();
+        }
+        
+        function onMouseWheel(event) {
+            if (isReloading) return;
+            let newIndex = currentWeaponIndex;
+            if (event.deltaY < 0) { 
+                newIndex--;
+            } else { 
+                newIndex++;
+            }
+            
+            if (newIndex < 0) {
+                newIndex = playerInventory.length - 1;
+            }
+            if (newIndex >= playerInventory.length) {
+                newIndex = 0;
+            }
+            
+            switchWeapon(newIndex);
+        }
+
+        // --- (NEW) 彈藥 UI 和裝填 (重構) ---
         function updateAmmoUI() {
+            if (playerInventory.length === 0) return;
+            const currentWeapon = playerInventory[currentWeaponIndex];
+            
             if (isReloading) {
-                ammoText.textContent = "裝填中...";
+                ammoText.textContent = `裝填中... (${currentWeapon.weapon.name})`;
                 ammoBar.style.width = '0%';
             } else {
-                ammoText.textContent = `${playerAmmo} / ${magazineSize}`;
-                const ammoPercent = (playerAmmo / magazineSize) * 100;
+                let ammo = currentWeapon.currentAmmo;
+                let mag = currentWeapon.weapon.magazineSize;
+                // 小刀和炸彈的特殊顯示
+                if (currentWeapon.weapon.name === "小刀") {
+                    ammoText.textContent = `小刀 (無限)`;
+                    ammoBar.style.width = '100%';
+                    return;
+                }
+                if (currentWeapon.weapon.name === "炸彈") {
+                    ammoText.textContent = `炸彈: ${ammo} / ${mag}`;
+                    ammoBar.style.width = (ammo / mag) * 100 + '%';
+                    return;
+                }
+                
+                ammoText.textContent = `${ammo} / ${mag} (${currentWeapon.weapon.name})`;
+                const ammoPercent = (ammo / mag) * 100;
                 ammoBar.style.width = ammoPercent + '%';
             }
         }
+        
         function startReload() {
             if (isReloading) return; 
+            const currentWeapon = playerInventory[currentWeaponIndex];
+            
+            // (NEW) 小刀和炸彈不能裝填
+            if (currentWeapon.weapon.reloadTime > 99999) return;
+            
             isReloading = true;
             updateAmmoUI();
             
             setTimeout(() => {
-                playerAmmo = magazineSize;
+                currentWeapon.currentAmmo = currentWeapon.weapon.magazineSize;
                 isReloading = false;
                 updateAmmoUI();
-            }, reloadTime);
+            }, currentWeapon.weapon.reloadTime); 
+        }
+        
+        function updatePauseMenuInfo() {
+            if (playerInventory.length === 0) return;
+            const stats = playerInventory[currentWeaponIndex].weapon;
+            
+            let ammoStats = `<li>彈匣: ${stats.magazineSize}</li>
+                             <li>填彈: ${stats.reloadTime / 1000} s</li>`;
+            
+            if (stats.name === "小刀") {
+                ammoStats = `<li>彈匣: N/A (無限)</li>
+                             <li>填彈: N/A</li>`;
+            }
+            if (stats.name === "炸彈") {
+                ammoStats = `<li>持有: ${playerInventory[currentWeaponIndex].currentAmmo}</li>
+                             <li>填彈: N/A (消耗品)</li>`;
+            }
+
+            pauseInfoGunStats.innerHTML = `
+                <li>名稱: ${stats.name}</li>
+                <li>威力: ${stats.damage}</li>
+                <li>射程: ${stats.range} m</li>
+                ${ammoStats}
+                <li>射速: ${ (1000 / stats.cooldown).toFixed(1) } /s</li>
+            `;
+        }
+        
+        // (NEW) 炸彈邏輯
+        function spawnPlayerGrenade() {
+            const playerPos = controls.getObject().position;
+            const camDir = new THREE.Vector3();
+            camera.getWorldDirection(camDir);
+
+            const grenade = {
+                mesh: new THREE.Mesh(grenadeGeometry, grenadeMaterial),
+                velocity: camDir.clone().multiplyScalar(15).add(new THREE.Vector3(0, 5, 0)), // 向上拋
+                timer: 3.0 // 3 秒後爆炸
+            };
+            
+            grenade.mesh.position.copy(playerPos).add(camDir.clone().multiplyScalar(1.0));
+            
+            scene.add(grenade.mesh);
+            objects.push(grenade.mesh); // 加到 objects 以便射擊 (雖然沒意義)
+            playerGrenades.push(grenade);
+        }
+        
+        function updatePlayerGrenades(delta) {
+            for (let i = playerGrenades.length - 1; i >= 0; i--) {
+                const grenade = playerGrenades[i];
+                
+                // 物理
+                grenade.velocity.y -= 9.8 * 2.0 * delta;
+                grenade.mesh.position.add(grenade.velocity.clone().multiplyScalar(delta));
+                
+                // 簡易地面碰撞
+                if (grenade.mesh.position.y < 0.2) {
+                    grenade.mesh.position.y = 0.2;
+                    grenade.velocity.y *= -0.4; // 反彈
+                    grenade.velocity.x *= 0.8; // 摩擦力
+                    grenade.velocity.z *= 0.8;
+                }
+                
+                // 計時
+                grenade.timer -= delta;
+                if (grenade.timer <= 0) {
+                    explodeGrenade(grenade);
+                    scene.remove(grenade.mesh);
+                    objects.splice(objects.indexOf(grenade.mesh), 1);
+                    playerGrenades.splice(i, 1);
+                }
+            }
+        }
+        
+        function explodeGrenade(grenade) {
+            const pos = grenade.mesh.position;
+            const radius = WEAPONS.bomb.range;
+            const damage = WEAPONS.bomb.damage;
+            
+            // 簡易爆炸特效 (閃光)
+            const flash = new THREE.Mesh(
+                new THREE.SphereGeometry(radius, 16, 16),
+                new THREE.MeshBasicMaterial({ color: 0xffff00, transparent: true, opacity: 0.8 })
+            );
+            flash.position.copy(pos);
+            scene.add(flash);
+            setTimeout(() => scene.remove(flash), 150);
+            
+            // 範圍傷害
+            for (const enemy of enemies) {
+                const distance = enemy.mesh.position.distanceTo(pos);
+                if (distance <= radius && !enemy.isInvincible) {
+                    enemy.health -= damage;
+                    
+                    if (enemy.type === 'boss') {
+                        updateBossHud(enemy); 
+                    } else {
+                        updateEnemyHealthBar(enemy); 
+                    }
+                    
+                    if (enemy.health <= 0) {
+                        killEnemy(enemy);
+                    } else {
+                        // 擊中特效
+                        const originalColor = enemy.mesh.material.color.getHex();
+                        enemy.mesh.material.color.set(0xffffff);
+                        setTimeout(() => {
+                            if (enemy.mesh && enemy.mesh.material) { 
+                                enemy.mesh.material.color.set(originalColor); 
+                            }
+                        }, 100);
+                    }
+                }
+            }
         }
 
         // --- 玩家戰鬥 (已更新) ---
         function onShoot() {
-            // (NEW) 移除了 isLocked 檢查，因為在 animate 中檢查
             if (!pauseMenu.classList.contains('hidden')) return;
-
-            if (isReloading) {
-                return; 
-            }
             
-            if (playerAmmo <= 0) {
+            const currentWeaponInv = playerInventory[currentWeaponIndex];
+            const weapon = currentWeaponInv.weapon;
+
+            if (isReloading) return; 
+            
+            if (currentWeaponInv.currentAmmo <= 0) {
                 startReload(); 
                 return;
             }
 
             const time = performance.now();
-            if (time < lastPlayerShootTime + playerGunCooldown) {
-                return; // 射速限制
+            if (time < lastPlayerShootTime + weapon.cooldown) {
+                return; 
             }
             lastPlayerShootTime = time;
 
-            playerAmmo--;
-            updateAmmoUI();
-
-            const shootRaycaster = new THREE.Raycaster();
-            shootRaycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-            const intersects = shootRaycaster.intersectObjects(objects); 
-            
-            if (intersects.length > 0) {
-                const intersectedObject = intersects[0].object;
-                const hitEnemy = enemies.find(e => e.mesh === intersectedObject);
+            // (NEW) 根據武器類型決定行為
+            if (weapon.name === "炸彈") {
+                spawnPlayerGrenade();
+                currentWeaponInv.currentAmmo--; // 消耗
+            }
+            else if (weapon.name === "小刀") {
+                // 近戰 Raycast
+                const shootRaycaster = new THREE.Raycaster();
+                shootRaycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+                const intersects = shootRaycaster.intersectObjects(objects); 
                 
-                if (hitEnemy) {
+                if (intersects.length > 0) {
+                    const intersect = intersects[0];
+                    const hitEnemy = enemies.find(e => e.mesh === intersect.object);
                     
-                    // (NEW) 無敵檢查
-                    if (hitEnemy.isInvincible) {
-                        return; // 射擊無效
+                    if (hitEnemy && intersect.distance <= weapon.range) {
+                        if (hitEnemy.isInvincible) return; 
+                        hitEnemy.health -= weapon.damage; 
+                        if (hitEnemy.type === 'boss') updateBossHud(hitEnemy); 
+                        else updateEnemyHealthBar(hitEnemy); 
+                        if (hitEnemy.health <= 0) killEnemy(hitEnemy);
                     }
+                }
+                // 小刀不消耗彈藥
+            }
+            else if (weapon.name === "手槍") {
+                // 手槍 Raycast
+                currentWeaponInv.currentAmmo--;
+                const shootRaycaster = new THREE.Raycaster();
+                shootRaycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+                const intersects = shootRaycaster.intersectObjects(objects); 
+                
+                if (intersects.length > 0) {
+                    const intersect = intersects[0];
+                    const hitEnemy = enemies.find(e => e.mesh === intersect.object);
                     
-                    hitEnemy.health -= 25; 
-                    
-                    // (NEW) 更新血條
-                    if (hitEnemy.type === 'boss') {
-                        updateBossHud(hitEnemy); 
-                    } else {
-                        updateEnemyHealthBar(hitEnemy); 
-                    }
-                    
-                    if (hitEnemy.health <= 0) {
-                        killEnemy(hitEnemy);
-                    } else {
-                        const originalColor = hitEnemy.mesh.material.color.getHex();
-                        hitEnemy.mesh.material.color.set(0xffffff);
-                        setTimeout(() => {
-                            if (hitEnemy.mesh && hitEnemy.mesh.material) { 
-                                hitEnemy.mesh.material.color.set(originalColor); 
-                            }
-                        }, 100);
-                    }
-                } 
+                    if (hitEnemy && intersect.distance <= weapon.range) {
+                        if (hitEnemy.isInvincible) return; 
+                        hitEnemy.health -= weapon.damage; 
+                        if (hitEnemy.type === 'boss') updateBossHud(hitEnemy); 
+                        else updateEnemyHealthBar(hitEnemy); 
+                        if (hitEnemy.health <= 0) killEnemy(hitEnemy);
+                    } 
+                }
             }
             
-            if (playerAmmo <= 0) {
+            updateAmmoUI();
+            
+            if (currentWeaponInv.currentAmmo <= 0) {
                 startReload();
             }
         }
         function killEnemy(enemy) {
             scene.remove(enemy.mesh);
-            if (enemy.healthBar) { // (v20)
+            if (enemy.healthBar) { 
                 scene.remove(enemy.healthBar);
                 enemy.healthBar.material.map.dispose();
                 enemy.healthBar.material.dispose();
@@ -1543,10 +1849,10 @@
         }
         function playerDie() {
             playerHealth = 0;
-            playerAmmo = magazineSize; 
             isReloading = false; 
-            updateAmmoUI(); 
-            isFiring = false; // (NEW) 死亡時停止射擊
+            isFiring = false; 
+            
+            initWeapons(); // (NEW) 死亡時重置所有武器和彈藥
             
             if (!isTouchDevice) {
                 controls.unlock();
@@ -1557,7 +1863,7 @@
             deathScreenElement.classList.remove('hidden');
         }
 
-        // --- 電腦專用鍵盤 (無變動) ---
+        // --- 電腦專用鍵盤 ---
         function onKeyDown(event) {
             switch (event.code) {
                 case 'KeyW': moveForward = true; break;
@@ -1568,6 +1874,9 @@
                     if (canJump === true) velocity.y += 15;
                     canJump = false;
                     break;
+                case 'Digit1': switchWeapon(0); break;
+                case 'Digit2': switchWeapon(1); break;
+                case 'Digit3': switchWeapon(2); break;
             }
         }
         function onKeyUp(event) {
@@ -1579,7 +1888,7 @@
             }
         }
 
-        // --- 觸控控制 (已更新) ---
+        // --- 觸控控制 ---
         function initTouchControls() {
             const jumpButton = document.getElementById('jump-button');
             const shootButton = document.getElementById('shoot-button');
@@ -1609,7 +1918,6 @@
                 canJump = false;
             }, { passive: false });
 
-            // (NEW) 連發
             shootButton.addEventListener('touchstart', (e) => {
                 e.preventDefault();
                 isFiring = true; 
@@ -1625,13 +1933,14 @@
 
             pauseButton.addEventListener('touchstart', (e) => {
                 e.preventDefault();
+                updatePauseMenuInfo(); 
                 if (pauseMenu.classList.contains('hidden') && 
                     blocker.classList.contains('hidden') &&
                     deathScreenElement.classList.contains('hidden')) 
                 {
                     pauseMenu.classList.remove('hidden');
                     showGameUI(false);
-                    isFiring = false; // (NEW) 暫停時停止射擊
+                    isFiring = false; 
                 }
             }, { passive: false });
 
@@ -1687,7 +1996,7 @@
         }
 
 
-        // --- 視窗/物理 (無變動) ---
+        // --- 視窗/物理 ---
         function onWindowResize() {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
@@ -1747,7 +2056,7 @@
             }
         }
         
-        // 子彈發射 (v19 - 無變動)
+        // 子彈發射
         function spawnEnemyBullet(enemy) {
             const playerPos = controls.getObject().position;
             const enemyPos = enemy.mesh.position;
@@ -1782,7 +2091,7 @@
             }
         }
         
-        // --- AI (已更新) ---
+        // --- AI ---
         function updateEnemies(time, delta) {
             const playerPos = controls.getObject().position;
             for (let i = enemies.length - 1; i >= 0; i--) { 
@@ -1790,7 +2099,6 @@
                 const enemyPos = enemy.mesh.position;
                 const distance = playerPos.distanceTo(enemyPos);
                 
-                // (v20) 敵人物理
                 enemy.velocity.y -= 9.8 * 2.0 * delta;
                 enemy.mesh.position.y += enemy.velocity.y * delta;
                 
@@ -1801,27 +2109,24 @@
                     enemy.canJump = true;
                 }
                 
-                // (NEW) Boss 技能狀態機
                 if (enemy.type === 'boss') {
-                    // 旋轉
                     if (enemy.isSpinning) {
-                        enemy.mesh.rotation.y += delta * 20; // 瘋狂旋轉
+                        enemy.mesh.rotation.y += delta * 20; 
                         enemy.spinTimer -= delta;
                         if (enemy.spinTimer <= 0) {
                             enemy.isSpinning = false;
                             enemy.isInvincible = false;
-                            enemy.spinCooldown = Math.random() * 5 + 8; // 重設冷卻
+                            enemy.spinCooldown = Math.random() * 5 + 8; 
                         }
-                        continue; // 旋轉時不做其他事
+                        continue; 
                     } else if (enemy.bossAbility === 'spinner') {
                         enemy.spinCooldown -= delta;
                         if (enemy.spinCooldown <= 0) {
                             enemy.isSpinning = true;
                             enemy.isInvincible = true;
-                            enemy.spinTimer = 3.0; // 旋轉 3 秒
+                            enemy.spinTimer = 3.0; 
                         }
                     }
-                    // 瞬移
                     else if (enemy.bossAbility === 'teleporter') {
                         enemy.teleportTimer -= delta;
                         if (enemy.teleportTimer <= 0) {
@@ -1831,10 +2136,9 @@
                                 enemyPos.y,
                                 (Math.random() - 0.5) * mapEdge * 2
                             );
-                            enemy.teleportTimer = Math.random() * 5 + 8; // 重設冷卻
+                            enemy.teleportTimer = Math.random() * 5 + 8; 
                         }
                     }
-                    // 跳躍
                     else if (enemy.bossAbility === 'jumper') {
                         enemy.jumpCooldown -= delta;
                         if (enemy.canJump && enemy.jumpCooldown <= 0 && distance < 30) {
@@ -1844,7 +2148,6 @@
                         }
                     }
                 }
-                // (v20) 普通敵人閃避
                 else if (enemy.type === 'enemy') {
                     enemy.jumpCooldown -= delta;
                     if (enemy.canJump && enemy.jumpCooldown <= 0 && distance < 20 && Math.random() < 0.01) {
@@ -1854,7 +2157,6 @@
                     }
                 }
 
-                // AI 移動邏輯 (v19)
                 if (enemy.stuckMoveTimer > 0) {
                     enemy.stuckMoveTimer -= delta;
                     enemy.mesh.position.add(enemy.stuckMoveDir.clone().multiplyScalar(enemy.speed * delta));
@@ -1885,7 +2187,7 @@
                             enemy.stuckMoveDir.multiplyScalar(-1);
                         }
                     } 
-                    else if (enemy.type === 'boss' && Math.random() < 0.01) { // (v20) Boss 側移
+                    else if (enemy.type === 'boss' && Math.random() < 0.01) { 
                          enemy.stuckMoveTimer = 1.0; 
                          enemy.stuckMoveDir.set(dirToPlayer.z, 0, -dirToPlayer.x);
                          if (Math.random() > 0.5) {
@@ -1897,11 +2199,10 @@
                     }
                 }
                 
-                // 攻擊邏輯 (v19)
                 if (distance < enemy.attackRange && time > enemy.lastAttackTime + enemy.attackCooldown) {
                     enemy.lastAttackTime = time;
                     const dirToPlayer = playerPos.clone().sub(enemyPos).normalize();
-                    enemyRaycaster.set(enemyPos, dirToPlayer);
+                    enemyRaycaster.set(enemyPos, dirToPlayer); // 修正 v21 的錯字 dirToPlaver
                     enemyRaycaster.far = enemy.attackRange;
                     const obstacleHits = enemyRaycaster.intersectObjects(obstacles);
                     if (obstacleHits.length === 0 || obstacleHits[0].distance > distance) {
@@ -1909,7 +2210,6 @@
                     }
                 }
                 
-                // (v20) 更新血條位置
                 if (enemy.healthBar) {
                     enemy.healthBar.position.copy(enemy.mesh.position);
                     enemy.healthBar.position.y += (enemy.mesh.geometry.parameters.height / 2) + 1.0;
@@ -1917,14 +2217,14 @@
             }
         }
         
-        // (NEW) HUD 更新
+        // --- HUD 更新 ---
         function updateTargetHud() {
             targetRaycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
             const intersects = targetRaycaster.intersectObjects(enemies.map(e => e.mesh));
             
             if (intersects.length > 0) {
                 const hitEnemy = enemies.find(e => e.mesh === intersects[0].object);
-                if (hitEnemy && hitEnemy.type !== 'boss') { // Boss 除外
+                if (hitEnemy && hitEnemy.type !== 'boss') { 
                     let name = "敵人";
                     if (hitEnemy.type === 'tank') name = "坦克";
                     if (hitEnemy.type === 'robot') name = "機器人";
@@ -1952,7 +2252,7 @@
             }
         }
 
-        // 遊戲主循環 (已更新)
+        // --- 遊戲主循環 (已更新) ---
         function animate() {
             requestAnimationFrame(animate);
 
@@ -1972,7 +2272,6 @@
                 checkGround();
                 checkCollisions();
                 
-                // (NEW) 連發
                 if (isFiring) {
                     onShoot();
                 }
@@ -2000,8 +2299,8 @@
 
                 updateEnemies(time, delta);
                 updateEnemyBullets(delta);
+                updatePlayerGrenades(delta); // (NEW)
                 
-                // (NEW) 更新 HUD
                 updateTargetHud();
                 updateBossHud();
             }
