@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>3D 射擊遊戲 (v23 - 商店與新武器)</title>
+    <title>PandaPanda槍戰 v27</title>
     <style>
         /* CSS 重置 */
         body, html {
@@ -58,6 +58,17 @@
 
         #hud-level { margin-bottom: 10px; }
         #hud-currency { }
+        
+        #hub-level-display, #hub-currency-display {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #ffc107;
+        }
+        #hub-level-display {
+             color: #fff;
+             font-size: 18px;
+        }
         
         #target-hud {
             position: fixed;
@@ -305,6 +316,62 @@
             margin: 25px 0;
         }
         
+        /* --- 商店 / 裝備 --- */
+        #shop-currency-display, #equip-info {
+            font-size: 20px;
+            font-weight: bold;
+            color: #ffc107; /* 金幣顏色 */
+            margin-bottom: 20px;
+        }
+        #equip-info {
+             color: #fff;
+             font-size: 16px;
+        }
+        .list-container {
+            display: flex;
+            justify-content: space-between;
+            text-align: left;
+        }
+        .list-column {
+            width: 48%;
+        }
+        .list-column h3 {
+            text-align: center;
+        }
+        .shop-item, .equip-item {
+            background: #333;
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .shop-item-info {
+            text-align: left;
+        }
+        .shop-item-info strong {
+            font-size: 16px;
+            display: block;
+        }
+        .shop-item-info span {
+            font-size: 12px;
+            color: #aaa;
+        }
+        .equip-item-name {
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .shop-buy-button {
+            padding: 8px 12px;
+            font-size: 14px;
+        }
+        .equip-button {
+            padding: 5px 8px;
+            font-size: 12px;
+        }
+        
+        
         /* --- Z-Index 修正 --- */
         #win-screen { z-index: 40; }
         #death-screen { z-index: 50; }
@@ -312,6 +379,8 @@
         #load-menu-modal, #save-menu-modal {
             z-index: 60;
         }
+        #shop-menu, #equip-menu { z-index: 30; } 
+        #hub-menu { z-index: 25; } 
         
         /* --- 觸控 UI --- */
         #touch-controls-container {
@@ -405,25 +474,26 @@
     <div id="blocker" class="menu-overlay">
         <div class="menu-content">
             <h2>3D 射擊遊戲</h2>
-            <button id="new-game-button" class="menu-button">新遊戲</button>
-            <button id="load-game-modal-button" class="menu-button btn-blue">載入遊戲</button>
-            <button id="shop-button" class="menu-button btn-grey">商店</button> <!-- (NEW) -->
-            <p style="margin-top: 20px;">
-                <b>電腦:</b><br>
-                W, A, S, D: 移動<br>
-                Space: 跳躍<br>
-                滑鼠: 環顧四周<br>
-                按住左鍵: 攻擊/射擊<br>
-                滾輪 / 1(手槍), 2(小刀), 3(炸彈): 切換武器<br> <!-- (NEW) -->
-                ESC: 暫停選單
-            </p>
-            <p style="margin-top: 20px;">
-                <b>平板/手機:</b><br>
-                左側按鈕: 移動<br>
-                右側按鈕: 跳躍/射擊 (按住連發)<br>
-                滑動螢幕: 環顧四周<br>
-                右上角按鈕: 暫停
-            </p>
+            <button id="hub-new-game-button" class="menu-button">新遊戲</button>
+            <button id="hub-continue-game-button" class="menu-button btn-blue">繼續遊戲</button>
+            <button id="hub-load-game-button" class="menu-button btn-blue">選擇存檔</button>
+            <button id="shop-button" class="menu-button btn-grey">商店</button>
+            <button id="equip-button" class="menu-button btn-grey">裝備</button>
+        </div>
+    </div>
+    
+    <!-- 大廳選單 -->
+    <div id="hub-menu" class="menu-overlay hidden">
+        <div class="menu-content">
+            <h2>大廳</h2>
+            <div id="hub-currency-display">你的金幣: 0</div>
+            <div id="hub-level-display">目前關卡: 1</div>
+            <hr class="divider">
+            <button id="hub-start-battle-button" class="menu-button btn-red">開始戰鬥</button>
+            <button id="hub-shop-button" class="menu-button btn-grey">商店</button>
+            <button id="hub-equip-button" class="menu-button btn-grey">裝備</button>
+            <button id="hub-save-game-button" class="menu-button btn-blue">儲存遊戲</button>
+            <button id="hub-back-to-main-menu-button" class="menu-button btn-grey" style="margin-top: 30px;">返回主選單</button>
         </div>
     </div>
 
@@ -435,7 +505,38 @@
             <button id="difficulty-medium" class="menu-button btn-blue">中等</button>
             <button id="difficulty-hard" class="menu-button btn-red">困難</button>
             <button id="difficulty-extreme" class="menu-button btn-purple">極難</button> 
-            <button id="difficulty-back-to-menu" class="menu-button btn-grey" style="margin-top: 30px;">回到主選單</button>
+            <button id="difficulty-back-to-hub" class="menu-button btn-grey" style="margin-top: 30px;">返回大廳</button>
+        </div>
+    </div>
+    
+    <!-- 商店選單 -->
+    <div id="shop-menu" class="menu-overlay hidden">
+        <div class="menu-content">
+            <h2>商店</h2>
+            <div id="shop-currency-display">你的金幣: 0</div>
+            <div id="shop-list" class="slot-list">
+                <!-- 商店物品會由 JS 動態填入 -->
+            </div>
+            <button id="shop-back-button" class="menu-button btn-grey" style="margin-top: 30px;">返回</button>
+        </div>
+    </div>
+    
+    <!-- 裝備選單 -->
+    <div id="equip-menu" class="menu-overlay hidden">
+        <div class="menu-content">
+            <h2>裝備</h2>
+            <div id="equip-info">已裝備 3 / 3</div>
+            <div class="list-container">
+                <div class="list-column">
+                    <h3>已裝備</h3>
+                    <div id="equip-list-equipped" class="slot-list" style="max-height: 250px;"></div>
+                </div>
+                <div class="list-column">
+                    <h3>武器庫</h3>
+                    <div id="equip-list-owned" class="slot-list" style="max-height: 250px;"></div>
+                </div>
+            </div>
+            <button id="equip-back-button" class="menu-button btn-grey" style="margin-top: 30px;">返回</button>
         </div>
     </div>
 
@@ -445,19 +546,19 @@
             <h2 style="color: #4CAF50;">關卡勝利！</h2>
             <p id="currency-earned" style="font-size: 20px; margin: 20px 0;">獲得金幣: 100 (總計: 100)</p>
             <button id="next-level-button" class="menu-button">下一關</button>
-            <button id="save-game-win-button" class="menu-button btn-blue">儲存遊戲</button>
-            <button id="quit-to-menu-win-button" class="menu-button btn-grey">回到主選單</button>
+            <button id="save-game-win-button" class="menu-button btn-blue">儲存遊戲 (手動)</button>
+            <button id="quit-to-hub-win-button" class="menu-button btn-grey">返回大廳</button>
         </div>
     </div>
 
-    <!-- 暫停選單 (已更新) -->
+    <!-- 暫停選單 -->
     <div id="pause-menu" class="menu-overlay hidden">
         <div class="menu-content">
             <h2>遊戲暫停</h2>
             <button id="resume-game-button" class="menu-button">繼續遊戲</button>
             <button id="save-game-modal-button" class="menu-button btn-blue">儲存遊戲</button>
             <button id="load-game-modal-button-pause" class="menu-button btn-blue">載入遊戲</button>
-            <button id="quit-to-menu-button" class="menu-button btn-red">回到主選單</button>
+            <button id="quit-to-hub-button" class="menu-button btn-red">返回大廳</button>
             <div id="message-box"></div>
             
             <div id="pause-info-container">
@@ -486,7 +587,7 @@
             <h2 style="color: #f44336;">你死了</h2>
             <p>您在 第 1 關 陣亡</p> 
             <button id="restart-button" class="menu-button">重新開始</button>
-            <button id="quit-to-menu-death-button" class="menu-button btn-grey">回到主選單</button>
+            <button id="quit-to-hub-death-button" class="menu-button btn-grey">返回大廳</button>
         </div>
     </div>
 
@@ -585,7 +686,7 @@
         let enemies = []; 
         let obstacles = []; 
         let enemyBullets = []; 
-        let playerGrenades = []; // (NEW) 玩家的炸彈
+        let playerGrenades = []; 
         let ground;
 
         const isTouchDevice = ('ontouchstart' in window || navigator.maxTouchPoints > 0);
@@ -595,42 +696,59 @@
         let playerCurrency = 0;
         let currentDifficulty = 'medium'; 
 
-        // (NEW) 武器系統
+        // --- 武器資料庫 ---
         const WEAPONS = {
+            // 預設武器
             pistol: {
                 name: "手槍",
-                damage: 15,
-                range: 50,
-                magazineSize: 12,
-                reloadTime: 1500,
-                cooldown: 300,
-                color: 0xaaaaaa,
-                scale: new THREE.Vector3(0.1, 0.1, 0.4)
+                damage: 15, range: 50, magazineSize: 12, reloadTime: 1500, cooldown: 300,
+                color: 0xaaaaaa, scale: new THREE.Vector3(0.1, 0.1, 0.4),
+                cost: 0, desc: "可靠的基礎手槍。"
             },
             knife: {
                 name: "小刀",
-                damage: 75,
-                range: 2.5, // 近戰範圍
-                magazineSize: 1, // 無彈匣
-                reloadTime: 9999999, // 無法裝填
-                cooldown: 500, // 揮舞速度
-                color: 0xcccccc,
-                scale: new THREE.Vector3(0.05, 0.05, 0.3)
+                damage: 75, range: 2.5, magazineSize: 1, reloadTime: 9999999, cooldown: 500,
+                color: 0xcccccc, scale: new THREE.Vector3(0.05, 0.05, 0.3),
+                cost: 0, desc: "近戰武器，無限使用。"
             },
             bomb: {
                 name: "炸彈",
-                damage: 200, // 範圍傷害
-                range: 10,  // 爆炸半徑
-                magazineSize: 1, // 消耗品
-                reloadTime: 9999999, // 無法裝填
-                cooldown: 1000, // 投擲速度
-                color: 0x335533,
-                scale: new THREE.Vector3(0.15, 0.15, 0.15)
+                damage: 200, range: 10, magazineSize: 1, reloadTime: 9999999, cooldown: 1000,
+                color: 0x335533, scale: new THREE.Vector3(0.15, 0.15, 0.15),
+                cost: 0, desc: "範圍傷害，消耗品。"
+            },
+            // 可購買武器
+            smg: {
+                name: "衝鋒槍",
+                damage: 10, range: 40, magazineSize: 30, reloadTime: 2000, cooldown: 80,
+                color: 0x555555, scale: new THREE.Vector3(0.1, 0.1, 0.5),
+                cost: 500, desc: "射速極快，近距離壓制。"
+            },
+            sniper: {
+                name: "狙擊槍",
+                damage: 150, range: 200, magazineSize: 5, reloadTime: 3000, cooldown: 1200,
+                color: 0x333333, scale: new THREE.Vector3(0.1, 0.1, 1.0),
+                cost: 1000, desc: "高威力，長射程。"
             }
         };
-        let playerInventory = [];
+        const SHOP_WEAPONS = ['smg', 'sniper']; 
+        
+        const ENEMY_WEAPONS_BASIC = [
+            { color: 0xff4444, scale: new THREE.Vector3(0.1, 0.1, 0.3) }, // Basic Pistol
+            { color: 0xffee44, scale: new THREE.Vector3(0.1, 0.1, 0.4) }, // Basic SMG
+            { color: 0x44ff44, scale: new THREE.Vector3(0.15, 0.15, 0.4) } // Basic Shotgun
+        ];
+        const ENEMY_WEAPONS_MEDIUM = [
+            { color: 0xaa0000, scale: new THREE.Vector3(0.15, 0.15, 0.4) }, // Heavy Pistol
+            { color: 0x0000aa, scale: new THREE.Vector3(0.15, 0.15, 0.6) }, // Assault Rifle
+            { color: 0x00aa00, scale: new THREE.Vector3(0.2, 0.2, 0.6) }  // Heavy Shotgun
+        ];
+        
+        let playerOwnedWeapons = []; 
+        let playerEquippedWeapons = []; 
         let currentWeaponIndex = 0;
-        let gunViewModel; // 玩家看到的槍
+        
+        let gunViewModel; 
         let lastPlayerShootTime = 0;
         let isFiring = false; 
         let isReloading = false;
@@ -652,12 +770,13 @@
         
         const bulletGeometry = new THREE.SphereGeometry(0.1, 8, 8);
         const bulletMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 }); 
-        const grenadeGeometry = new THREE.SphereGeometry(0.2, 10, 10); // (NEW)
-        const grenadeMaterial = new THREE.MeshLambertMaterial({ color: 0x226622 }); // (NEW)
+        const grenadeGeometry = new THREE.SphereGeometry(0.2, 10, 10); 
+        const grenadeMaterial = new THREE.MeshLambertMaterial({ color: 0x226622 }); 
 
         // --- UI 元素 ---
         let blocker, pauseMenu, messageBox, crosshair;
-        let loadMenuModal, saveMenuModal;
+        let loadMenuModal, saveMenuModal, shopMenu, equipMenu, hubMenu; 
+        let hubLevelDisplay, hubCurrencyDisplay; 
         let loadSlotList, saveSlotList;
         let importFileInput, saveSlotNameInput;
         let healthBarElement, healthBarContainer, deathScreenElement; 
@@ -666,6 +785,7 @@
         let ammoContainer, ammoBar, ammoText;
         let targetHud, bossHud, bossName, bossHealthBar;
         let pauseInfoGunStats; 
+        let menuReturnState = 'main'; 
 
         // --- 視角觸控狀態 ---
         let lookTouchId = null;
@@ -673,6 +793,7 @@
         const LOOK_SENSITIVITY = 0.003;
 
         const SAVE_STORAGE_KEY = '3dGameSaves';
+        const LATEST_SAVE_KEY = '__latest_progress__'; // (NEW) 自動存檔槽
         const BOSS_ABILITIES = ['jumper', 'teleporter', 'spinner']; 
 
         // 初始化
@@ -692,6 +813,11 @@
             hudCurrency = document.getElementById('hud-currency');
             loadMenuModal = document.getElementById('load-menu-modal');
             saveMenuModal = document.getElementById('save-menu-modal');
+            shopMenu = document.getElementById('shop-menu'); 
+            equipMenu = document.getElementById('equip-menu'); 
+            hubMenu = document.getElementById('hub-menu'); 
+            hubLevelDisplay = document.getElementById('hub-level-display'); 
+            hubCurrencyDisplay = document.getElementById('hub-currency-display'); 
             loadSlotList = document.getElementById('load-slot-list');
             saveSlotList = document.getElementById('save-slot-list');
             importFileInput = document.getElementById('import-file-input');
@@ -766,20 +892,36 @@
 
         // --- UI 按鈕監聽 (已更新) ---
         function setupButtonListeners() {
-            document.getElementById('new-game-button').addEventListener('click', openDifficultySelect);
-            document.getElementById('load-game-modal-button').addEventListener('click', openLoadModal);
-            document.getElementById('shop-button').addEventListener('click', () => {
-                // (NEW) 商店按鈕，目前無功能
-                alert("商店即將開放！");
-            });
+            // 主選單
+            document.getElementById('hub-new-game-button').addEventListener('click', () => enterHub(true));
+            document.getElementById('hub-continue-game-button').addEventListener('click', loadLatestGame);
+            document.getElementById('hub-load-game-button').addEventListener('click', openLoadModal);
+            document.getElementById('shop-button').addEventListener('click', () => { menuReturnState = 'main'; openShop(); });
+            document.getElementById('equip-button').addEventListener('click', () => { menuReturnState = 'main'; openEquipMenu(); });
+            
+            // 大廳
+            document.getElementById('hub-start-battle-button').addEventListener('click', openDifficultySelect);
+            document.getElementById('hub-shop-button').addEventListener('click', () => { menuReturnState = 'hub'; openShop(); });
+            document.getElementById('hub-equip-button').addEventListener('click', () => { menuReturnState = 'hub'; openEquipMenu(); });
+            document.getElementById('hub-save-game-button').addEventListener('click', openSaveModal);
+            document.getElementById('hub-back-to-main-menu-button').addEventListener('click', quitToMainMenu);
+
+            // 商店 / 裝備
+            document.getElementById('shop-back-button').addEventListener('click', handleMenuBack);
+            document.getElementById('equip-back-button').addEventListener('click', handleMenuBack);
+            
+            // 難度選擇
             document.getElementById('difficulty-easy').addEventListener('click', () => startGame('easy'));
             document.getElementById('difficulty-medium').addEventListener('click', () => startGame('medium'));
             document.getElementById('difficulty-hard').addEventListener('click', () => startGame('hard'));
             document.getElementById('difficulty-extreme').addEventListener('click', () => startGame('extreme')); 
-            document.getElementById('difficulty-back-to-menu').addEventListener('click', quitToMainMenu);
+            document.getElementById('difficulty-back-to-hub').addEventListener('click', () => enterHub(false));
+            
+            // 遊戲中
             document.getElementById('next-level-button').addEventListener('click', startNextLevel);
             document.getElementById('save-game-win-button').addEventListener('click', openSaveModal);
-            document.getElementById('quit-to-menu-win-button').addEventListener('click', quitToMainMenu);
+            document.getElementById('quit-to-hub-win-button').addEventListener('click', quitToHub);
+            
             document.getElementById('resume-game-button').addEventListener('click', () => {
                 if (isTouchDevice) {
                     pauseMenu.classList.add('hidden');
@@ -790,9 +932,12 @@
             });
             document.getElementById('save-game-modal-button').addEventListener('click', openSaveModal);
             document.getElementById('load-game-modal-button-pause').addEventListener('click', openLoadModal);
-            document.getElementById('quit-to-menu-button').addEventListener('click', quitToMainMenu);
-            document.getElementById('restart-button').addEventListener('click', openDifficultySelect); 
-            document.getElementById('quit-to-menu-death-button').addEventListener('click', quitToMainMenu);
+            document.getElementById('quit-to-hub-button').addEventListener('click', quitToHub);
+            
+            document.getElementById('restart-button').addEventListener('click', () => enterHub(false)); 
+            document.getElementById('quit-to-hub-death-button').addEventListener('click', quitToHub);
+            
+            // 存檔/載入
             document.getElementById('import-from-txt-button').addEventListener('click', () => importFileInput.click());
             document.getElementById('close-load-modal-button').addEventListener('click', closeModals);
             importFileInput.addEventListener('change', handleFileUpload);
@@ -838,7 +983,7 @@
             }, duration);
         }
 
-        // --- 核心存檔邏輯 (LocalStorage) ---
+        // --- 核心存檔邏輯 (LocalStorage) (已更新) ---
         function getSaves() {
             const saves = localStorage.getItem(SAVE_STORAGE_KEY);
             return saves ? JSON.parse(saves) : {};
@@ -847,6 +992,10 @@
             localStorage.setItem(SAVE_STORAGE_KEY, JSON.stringify(saves));
         }
         function deleteGameSlot(slotName) {
+            if (slotName === LATEST_SAVE_KEY) {
+                alert("無法刪除自動存檔！");
+                return;
+            }
             if (!confirm(`您確定要刪除存檔 "${slotName}" 嗎？`)) return;
             const saves = getSaves();
             delete saves[slotName];
@@ -857,11 +1006,16 @@
         function populateLoadSlotList() {
             const saves = getSaves();
             loadSlotList.innerHTML = '';
-            if (Object.keys(saves).length === 0) {
+            
+            // 過濾掉自動存檔
+            const manualSaves = Object.keys(saves).filter(name => name !== LATEST_SAVE_KEY);
+
+            if (manualSaves.length === 0) {
                 loadSlotList.innerHTML = '<p style="color: #888;">沒有瀏覽器存檔</p>';
                 return;
             }
-            for (const slotName of Object.keys(saves)) {
+            
+            for (const slotName of manualSaves) {
                 const item = document.createElement('div');
                 item.className = 'slot-item';
                 item.innerHTML = `<span class="slot-item-name">${slotName}</span>`;
@@ -881,11 +1035,15 @@
         function populateSaveSlotList() {
             const saves = getSaves();
             saveSlotList.innerHTML = '';
-            if (Object.keys(saves).length === 0) {
+
+            // 過濾掉自動存檔
+            const manualSaves = Object.keys(saves).filter(name => name !== LATEST_SAVE_KEY);
+
+            if (manualSaves.length === 0) {
                 saveSlotList.innerHTML = '<p style="color: #888;">沒有可覆寫的存檔</p>';
                 return;
             }
-            for (const slotName of Object.keys(saves)) {
+            for (const slotName of manualSaves) {
                 const item = document.createElement('div');
                 item.className = 'slot-item';
                 item.innerHTML = `<span class="slot-item-name">${slotName}</span>`;
@@ -904,13 +1062,31 @@
         }
 
         // --- 核心遊戲狀態管理 (已更新) ---
-        function getCurrentGameState() {
+        function getHubSaveData() {
+            // 專門用於儲存大廳狀態
+            return {
+                playerHealth: playerHealth, 
+                playerCurrency: playerCurrency,
+                currentLevel: currentLevel,
+                currentDifficulty: currentDifficulty,
+                playerOwnedWeapons: playerOwnedWeapons,
+                playerEquippedWeapons: playerEquippedWeapons,
+                currentWeaponIndex: 0,
+                playerPosition: {x:0, y:PLAYER_HEIGHT, z:5},
+                playerRotation: {x:0, y:0, z:0},
+                remainingObjects: [] // 大廳沒有敵人
+            };
+        }
+        
+        function getCurrentBattleSaveData() {
+             // 專門用於儲存戰鬥狀態
             const saveData = {
                 playerHealth: playerHealth, 
                 playerCurrency: playerCurrency,
                 currentLevel: currentLevel,
                 currentDifficulty: currentDifficulty,
-                playerInventory: playerInventory,
+                playerOwnedWeapons: playerOwnedWeapons,
+                playerEquippedWeapons: playerEquippedWeapons,
                 currentWeaponIndex: currentWeaponIndex,
                 playerPosition: controls.getObject().position.clone(),
                 playerRotation: camera.rotation.clone(),
@@ -937,19 +1113,19 @@
             return saveData;
         }
         
-        // (NEW) 更新預設武器
         function getDefaultInventory() {
-            return [
+            const owned = ['pistol', 'knife', 'bomb'];
+            const equipped = [
                 { weapon: WEAPONS.pistol, currentAmmo: WEAPONS.pistol.magazineSize },
                 { weapon: WEAPONS.knife, currentAmmo: WEAPONS.knife.magazineSize },
-                { weapon: WEAPONS.bomb, currentAmmo: WEAPONS.bomb.magazineSize }
+                { weapon: WEAPONS.bomb, currentAmmo: 1 } 
             ];
+            return { owned, equipped };
         }
 
         function loadGameData(saveData) {
             try {
                 clearWorld(); 
-                createBoundaryWalls(); 
                 
                 playerHealth = saveData.playerHealth || 100;
                 playerCurrency = saveData.playerCurrency || 0;
@@ -959,41 +1135,50 @@
                 updateHealthBar();
                 updateHUD();
                 
-                playerInventory = saveData.playerInventory || getDefaultInventory();
+                const defaultInv = getDefaultInventory();
+                playerOwnedWeapons = saveData.playerOwnedWeapons || defaultInv.owned;
+                playerEquippedWeapons = saveData.playerEquippedWeapons || defaultInv.equipped;
                 currentWeaponIndex = saveData.currentWeaponIndex || 0;
-                switchWeapon(currentWeaponIndex, true); 
                 
-                saveData.remainingObjects.forEach(item => {
-                    if (item.type === 'enemy' || item.type === 'tank' || item.type === 'robot' || item.type === 'boss') {
-                        createEnemyAt(
-                            item.position, 
-                            item.health, 
-                            item.maxHealth || item.health, 
-                            item.speed, 
-                            item.attackCooldown, 
-                            item.type,
-                            item.bossAbility 
-                        ); 
-                    } else if (item.type === 'obstacle') {
-                        createObstacleAt(item.position);
+                if (saveData.remainingObjects && saveData.remainingObjects.length > 0) {
+                    createBoundaryWalls(); 
+                    switchWeapon(currentWeaponIndex, true); 
+                    
+                    saveData.remainingObjects.forEach(item => {
+                        if (item.type === 'enemy' || item.type === 'tank' || item.type === 'robot' || item.type === 'boss') {
+                            createEnemyAt(
+                                item.position, 
+                                item.health, 
+                                item.maxHealth || item.health, 
+                                item.speed, 
+                                item.attackCooldown, 
+                                item.type,
+                                item.bossAbility 
+                            ); 
+                        } else if (item.type === 'obstacle') {
+                            createObstacleAt(item.position);
+                        }
+                    });
+                    controls.getObject().position.set(saveData.playerPosition.x, saveData.playerPosition.y, saveData.playerPosition.z);
+                    const rot = saveData.playerRotation;
+                    if (rot && rot._order) {
+                        camera.rotation.set(rot._x, rot._y, rot._z, rot._order);
+                    } else if (rot) {
+                         camera.rotation.set(rot.x, rot.y, rot.z);
+                    } else {
+                        camera.rotation.set(0, 0, 0); 
                     }
-                });
-                controls.getObject().position.set(saveData.playerPosition.x, saveData.playerPosition.y, saveData.playerPosition.z);
-                const rot = saveData.playerRotation;
-                if (rot && rot._order) {
-                    camera.rotation.set(rot._x, rot._y, rot._z, rot._order);
-                } else if (rot) {
-                     camera.rotation.set(rot.x, rot.y, rot.z);
+                    velocity.set(0, 0, 0); 
+                    closeModals();
+                    hideAllMenus();
+                    if (isTouchDevice) {
+                        showGameUI(true); 
+                    } else {
+                        controls.lock(); 
+                    }
                 } else {
-                    camera.rotation.set(0, 0, 0); 
-                }
-                velocity.set(0, 0, 0); 
-                closeModals();
-                hideAllMenus();
-                if (isTouchDevice) {
-                    showGameUI(true); 
-                } else {
-                    controls.lock(); 
+                    closeModals();
+                    enterHub(false);
                 }
             } catch (e) {
                 console.error("Load failed:", e);
@@ -1001,18 +1186,26 @@
             }
         }
 
-        // --- LocalStorage 存取 ---
+        // --- LocalStorage 存取 (已更新) ---
         function saveGameToLocalStorageSlot(slotName) {
             slotName = slotName.trim();
             if (!slotName) {
                 showErrorMessage("請輸入存檔名稱！");
                 return;
             }
+            if (slotName === LATEST_SAVE_KEY) {
+                showErrorMessage("無法使用這個名稱！");
+                return;
+            }
             try {
-                const currentSaveData = getCurrentGameState();
+                const gameIsActive = !pauseMenu.classList.contains('hidden');
+                let currentSaveData = gameIsActive ? getCurrentBattleSaveData() : getHubSaveData();
+                
                 const saves = getSaves();
                 saves[slotName] = currentSaveData;
+                saves[LATEST_SAVE_KEY] = currentSaveData; // 同時更新自動存檔
                 saveSaves(saves);
+                
                 showMessage(`遊戲已儲存至： ${slotName}`);
                 populateSaveSlotList(); 
                 populateLoadSlotList(); 
@@ -1026,11 +1219,23 @@
             if (!saves[slotName]) return;
             loadGameData(saves[slotName]);
         }
+        
+        function loadLatestGame() {
+            const saves = getSaves();
+            if (saves[LATEST_SAVE_KEY]) {
+                loadGameFromLocalStorage(LATEST_SAVE_KEY);
+            } else {
+                // 如果沒有自動存檔，就開始新遊戲
+                enterHub(true); 
+            }
+        }
 
         // --- .txt 檔案 匯入/匯出 ---
         function exportGameToTxt() {
             try {
-                const saveData = getCurrentGameState();
+                const gameIsActive = !pauseMenu.classList.contains('hidden');
+                let saveData = gameIsActive ? getCurrentBattleSaveData() : getHubSaveData();
+                
                 const jsonString = JSON.stringify(saveData, null, 2); 
                 const blob = new Blob([jsonString], {type: 'text/plain;charset=utf-8'});
                 const timestamp = new Date().toISOString().replace(/[:.-]/g, '');
@@ -1056,7 +1261,7 @@
                 try {
                     const text = e.target.result;
                     const saveData = JSON.parse(text);
-                    if (saveData && saveData.playerPosition && saveData.remainingObjects) {
+                    if (saveData) {
                         loadGameData(saveData);
                     }
                 } catch (err) {
@@ -1150,7 +1355,7 @@
             healthBarTexture.needsUpdate = true;
         }
 
-        // --- 遊戲世界生成 (已更新) ---
+        // --- 遊戲世界生成 ---
         function clearWorld() {
             for (let i = collidables.length - 1; i >= 0; i--) {
                 const obj = collidables[i];
@@ -1165,11 +1370,12 @@
                     enemy.healthBar.material.map.dispose();
                     enemy.healthBar.material.dispose();
                 }
+                if (enemy.weaponMesh) enemy.mesh.remove(enemy.weaponMesh);
+                if (enemy.turret) enemy.mesh.remove(enemy.turret);
             }
             for (let i = enemyBullets.length - 1; i >= 0; i--) {
                 scene.remove(enemyBullets[i].mesh);
             }
-            // (NEW) 清除炸彈
             for (let i = playerGrenades.length - 1; i >= 0; i--) {
                 scene.remove(playerGrenades[i].mesh);
             }
@@ -1185,28 +1391,62 @@
         function createEnemyAt(pos, health, maxHealth, speed, attackCooldown, type = 'enemy', bossAbility = null) {
             let size = new THREE.Vector3(1, 1, 1);
             let color = 0xff0000; 
+            
+            let enemyWeapon = {}; 
 
             switch (type) {
                 case 'tank':
                     size.set(2, 2, 2);
                     color = 0x888888; 
                     pos.y = 1; 
+                    const turretGeo = new THREE.BoxGeometry(1, 0.8, 1);
+                    const turretMat = new THREE.MeshPhongMaterial({ color: 0x555555 });
+                    const turretMesh = new THREE.Mesh(turretGeo, turretMat);
+                    turretMesh.position.y = 0.8; 
+                    
+                    const barrelGeo = new THREE.CylinderGeometry(0.15, 0.15, 2, 8);
+                    const barrelMat = new THREE.MeshPhongMaterial({ color: 0x444444 });
+                    const barrelMesh = new THREE.Mesh(barrelGeo, barrelMat);
+                    barrelMesh.rotation.x = Math.PI / 2;
+                    barrelMesh.position.z = 1.0; 
+                    
+                    turretMesh.add(barrelMesh);
+                    enemyWeapon = { turret: turretMesh, barrel: barrelMesh };
                     break;
                 case 'robot':
                     size.set(1.5, 3, 1.5);
                     color = 0x0000ff; 
                     pos.y = 1.5; 
+                    const medWeapon = ENEMY_WEAPONS_MEDIUM[Math.floor(Math.random() * ENEMY_WEAPONS_MEDIUM.length)];
+                    const medWeaponMesh = new THREE.Mesh(
+                        new THREE.BoxGeometry(medWeapon.scale.x, medWeapon.scale.y, medWeapon.scale.z),
+                        new THREE.MeshPhongMaterial({ color: medWeapon.color })
+                    );
+                    medWeaponMesh.position.set(0.6, 0.5, 0.5); 
+                    enemyWeapon = { weaponMesh: medWeaponMesh };
                     break;
                 case 'boss':
                     size.set(5, 5, 5);
                     color = 0x111111; 
                     pos.y = 2.5; 
+                    const speedFactor = Math.random() * 0.4 + 0.8; 
+                    const healthFactor = Math.random() * 0.4 + 0.8;
+                    speed *= speedFactor;
+                    health = Math.floor(health * healthFactor);
+                    maxHealth = health;
                     break;
                 case 'enemy':
                 default:
                     size.set(1, 1, 1);
                     color = 0xff0000; 
                     pos.y = 0.5; 
+                    const basicWeapon = ENEMY_WEAPONS_BASIC[Math.floor(Math.random() * ENEMY_WEAPONS_BASIC.length)];
+                    const basicWeaponMesh = new THREE.Mesh(
+                        new THREE.BoxGeometry(basicWeapon.scale.x, basicWeapon.scale.y, basicWeapon.scale.z),
+                        new THREE.MeshPhongMaterial({ color: basicWeapon.color })
+                    );
+                    basicWeaponMesh.position.set(0.3, 0, 0.3); 
+                    enemyWeapon = { weaponMesh: basicWeaponMesh };
                     break;
             }
 
@@ -1217,6 +1457,9 @@
             box.castShadow = true;
             box.receiveShadow = true;
             box.name = "enemy"; 
+            
+            if (enemyWeapon.weaponMesh) box.add(enemyWeapon.weaponMesh);
+            if (enemyWeapon.turret) box.add(enemyWeapon.turret);
             
             let healthBarComponents = {};
             if (type !== 'boss') {
@@ -1251,7 +1494,8 @@
                 spinTimer: 0,
                 spinCooldown: Math.random() * 5 + 8, 
                 teleportTimer: Math.random() * 5 + 8, 
-                ...healthBarComponents 
+                ...healthBarComponents,
+                ...enemyWeapon 
             };
             scene.add(box);
             enemies.push(enemy); 
@@ -1407,23 +1651,56 @@
             deathScreenElement.classList.add('hidden');
             winScreenMenu.classList.add('hidden');
             difficultySelectMenu.classList.add('hidden');
+            shopMenu.classList.add('hidden'); 
+            equipMenu.classList.add('hidden'); 
+            hubMenu.classList.add('hidden'); 
             closeModals();
         }
         function updateHUD() {
             hudLevel.textContent = `第 ${currentLevel} 關`;
             hudCurrency.textContent = `金幣: ${playerCurrency}`;
         }
+        
+        function enterHub(isNewGame) {
+            if (isNewGame) {
+                currentLevel = 1;
+                playerCurrency = 0;
+                playerHealth = 100;
+                initWeapons(); 
+            }
+            hideAllMenus();
+            hubLevelDisplay.textContent = `目前關卡: ${currentLevel}`;
+            hubCurrencyDisplay.textContent = `你的金幣: ${playerCurrency}`;
+            hubMenu.classList.remove('hidden');
+        }
+        
         function openDifficultySelect() {
             hideAllMenus();
             difficultySelectMenu.classList.remove('hidden');
         }
+        
+        function handleMenuBack() {
+            if (menuReturnState === 'main') {
+                quitToMainMenu();
+            } else {
+                enterHub(false);
+            }
+        }
+        
         function startGame(difficulty) {
             currentDifficulty = difficulty;
-            currentLevel = 1;
-            playerCurrency = 0;
             playerHealth = 100;
             
-            initWeapons(); 
+            playerEquippedWeapons.forEach(invItem => {
+                if (invItem.weapon.magazineSize <= 12) { 
+                    invItem.currentAmmo = invItem.weapon.magazineSize;
+                }
+                if (invItem.weapon.name === "炸彈") {
+                    invItem.currentAmmo = 1; 
+                }
+            });
+            isReloading = false;
+            switchWeapon(currentWeaponIndex, true); 
             
             updateHealthBar();
             updateHUD();
@@ -1441,6 +1718,7 @@
                 controls.lock(); 
             }
         }
+        
         function showWinScreen() {
             if (!isTouchDevice) {
                 controls.unlock();
@@ -1459,37 +1737,34 @@
             }
             currencyEarned = Math.floor(currencyEarned);
             playerCurrency += currencyEarned;
-            document.getElementById('currency-earned').textContent = `獲得金幣: ${currencyEarned} (總計: ${playerCurrency})`;
+            
+            // 自動儲存
+            try {
+                const hubSaveData = getHubSaveData(); // 獲取更新了金幣後的大廳狀態
+                const saves = getSaves();
+                saves[LATEST_SAVE_KEY] = hubSaveData;
+                saveSaves(saves);
+            } catch (e) {
+                console.error("Auto-save failed:", e);
+            }
+            
+            document.getElementById('currency-earned').innerHTML = `獲得金幣: ${currencyEarned} (總計: ${playerCurrency})
+                <br><small style="color:#28a745;">(遊戲已自動儲存)</small>`;
             hideAllMenus();
             winScreenMenu.classList.remove('hidden');
         }
+        
         function startNextLevel() {
             currentLevel++;
-            playerHealth = 100; 
-            
-            playerInventory.forEach(invItem => {
-                // (NEW) 只重置手槍
-                if (invItem.weapon.name === "手槍") {
-                    invItem.currentAmmo = invItem.weapon.magazineSize;
-                }
-            });
-            isReloading = false; 
-            updateAmmoUI(); 
-            
-            updateHealthBar();
-            updateHUD();
-            
-            clearWorld();
-            createBoundaryWalls(); 
-            spawnEnemiesForLevel();
-            controls.getObject().position.set(0, PLAYER_HEIGHT, 5);
-            velocity.set(0, 0, 0);
-            hideAllMenus();
-            if (isTouchDevice) {
-                showGameUI(true);
-            } else {
-                controls.lock();
+            quitToHub();
+        }
+        function quitToHub() {
+            if (!isTouchDevice) {
+                controls.unlock();
             }
+            hideAllMenus();
+            showGameUI(false);
+            enterHub(false);
         }
         function quitToMainMenu() {
             if (!isTouchDevice) {
@@ -1515,7 +1790,8 @@
                 controls.addEventListener('unlock', function () {
                     updatePauseMenuInfo(); 
                     
-                    if (blocker.classList.contains('hidden') && 
+                    if (hubMenu.classList.contains('hidden') && 
+                        blocker.classList.contains('hidden') && 
                         deathScreenElement.classList.contains('hidden') &&
                         winScreenMenu.classList.contains('hidden') &&
                         difficultySelectMenu.classList.contains('hidden')) { 
@@ -1527,9 +1803,133 @@
             }
         }
         
-        // --- (NEW) 武器系統 ---
+        // --- 商店/裝備 ---
+        function openShop() {
+            hideAllMenus();
+            shopMenu.classList.remove('hidden');
+            document.getElementById('shop-currency-display').textContent = `你的金幣: ${playerCurrency}`;
+            
+            const shopList = document.getElementById('shop-list');
+            shopList.innerHTML = ''; 
+            
+            const allShopWeapons = [...Object.keys(WEAPONS).filter(k => WEAPONS[k].cost > 0)];
+            
+            allShopWeapons.forEach(weaponName => {
+                const weapon = WEAPONS[weaponName];
+                const item = document.createElement('div');
+                item.className = 'shop-item';
+                
+                const info = document.createElement('div');
+                info.className = 'shop-item-info';
+                info.innerHTML = `<strong>${weapon.name}</strong><span>${weapon.desc}</span>`;
+                item.appendChild(info);
+                
+                const button = document.createElement('button');
+                button.className = 'menu-button shop-buy-button';
+                
+                if (playerOwnedWeapons.includes(weaponName)) {
+                    button.textContent = '已擁有';
+                    button.disabled = true;
+                    button.classList.add('btn-grey');
+                } else {
+                    button.textContent = `購買 (${weapon.cost} 金幣)`;
+                    button.classList.add('btn-blue');
+                    if (playerCurrency < weapon.cost) {
+                        button.disabled = true;
+                        button.classList.add('btn-grey');
+                    }
+                    button.onclick = () => buyWeapon(weaponName);
+                }
+                item.appendChild(button);
+                shopList.appendChild(item);
+            });
+        }
+        
+        function buyWeapon(weaponName) {
+            const weapon = WEAPONS[weaponName];
+            if (playerCurrency >= weapon.cost && !playerOwnedWeapons.includes(weaponName)) {
+                playerCurrency -= weapon.cost;
+                playerOwnedWeapons.push(weaponName);
+                updateHUD();
+                openShop(); 
+            }
+        }
+
+        function openEquipMenu() {
+            hideAllMenus();
+            equipMenu.classList.remove('hidden');
+            
+            const equippedList = document.getElementById('equip-list-equipped');
+            const ownedList = document.getElementById('equip-list-owned');
+            equippedList.innerHTML = '';
+            ownedList.innerHTML = '';
+            
+            document.getElementById('equip-info').textContent = `已裝備 ${playerEquippedWeapons.length} / 3`;
+            
+            playerEquippedWeapons.forEach((invItem, index) => {
+                const item = document.createElement('div');
+                item.className = 'equip-item';
+                item.innerHTML = `<span class="equip-item-name">${invItem.weapon.name}</span>`;
+                
+                const button = document.createElement('button');
+                button.textContent = '卸下';
+                button.className = 'menu-button equip-button btn-red';
+                button.onclick = () => unequipWeapon(index);
+                item.appendChild(button);
+                equippedList.appendChild(item);
+            });
+            
+            const equippedNames = playerEquippedWeapons.map(item => item.weapon.name);
+            playerOwnedWeapons.forEach(weaponName => {
+                if (!equippedNames.includes(WEAPONS[weaponName].name)) {
+                    const item = document.createElement('div');
+                    item.className = 'equip-item';
+                    item.innerHTML = `<span class="equip-item-name">${WEAPONS[weaponName].name}</span>`;
+                    
+                    const button = document.createElement('button');
+                    button.textContent = '裝備';
+                    button.className = 'menu-button equip-button btn-blue';
+                    if (playerEquippedWeapons.length >= 3) {
+                        button.disabled = true;
+                        button.classList.add('btn-grey');
+                    }
+                    button.onclick = () => equipWeapon(weaponName);
+                    item.appendChild(button);
+                    ownedList.appendChild(item);
+                }
+            });
+        }
+        
+        function equipWeapon(weaponName) {
+            if (playerEquippedWeapons.length < 3) {
+                const weapon = WEAPONS[weaponName];
+                let ammo = weapon.magazineSize;
+                if (weapon.name === "炸彈") ammo = 1; 
+                
+                playerEquippedWeapons.push({
+                    weapon: weapon,
+                    currentAmmo: ammo
+                });
+                openEquipMenu(); 
+            }
+        }
+        
+        function unequipWeapon(index) {
+            if (playerEquippedWeapons.length <= 1) return; 
+            
+            const removed = playerEquippedWeapons.splice(index, 1);
+            
+            if (currentWeaponIndex >= index) {
+                switchWeapon(0); 
+            }
+            openEquipMenu(); 
+        }
+
+        // --- 武器系統 (已重構) ---
         function initWeapons() {
-            playerInventory = getDefaultInventory();
+            const defaultInv = getDefaultInventory();
+            playerOwnedWeapons = [...defaultInv.owned];
+            playerEquippedWeapons = [...defaultInv.equipped];
             currentWeaponIndex = 0;
             
             if (!gunViewModel) {
@@ -1550,11 +1950,21 @@
         }
 
         function switchWeapon(index, force = false) {
+            if (!playerEquippedWeapons[index]) index = 0; 
+            if (!playerEquippedWeapons[index]) { 
+                while (gunViewModel.children.length > 0) {
+                    gunViewModel.remove(gunViewModel.children[0]);
+                }
+                updateAmmoUI();
+                updatePauseMenuInfo();
+                return;
+            }
+            
             if ((index === currentWeaponIndex && !force) || isReloading) return;
             
             currentWeaponIndex = index;
             
-            const weapon = playerInventory[currentWeaponIndex].weapon;
+            const weapon = playerEquippedWeapons[currentWeaponIndex].weapon;
             
             while (gunViewModel.children.length > 0) {
                 gunViewModel.remove(gunViewModel.children[0]);
@@ -1568,7 +1978,7 @@
         }
         
         function onMouseWheel(event) {
-            if (isReloading) return;
+            if (isReloading || playerEquippedWeapons.length <= 1) return;
             let newIndex = currentWeaponIndex;
             if (event.deltaY < 0) { 
                 newIndex--;
@@ -1577,19 +1987,23 @@
             }
             
             if (newIndex < 0) {
-                newIndex = playerInventory.length - 1;
+                newIndex = playerEquippedWeapons.length - 1;
             }
-            if (newIndex >= playerInventory.length) {
+            if (newIndex >= playerEquippedWeapons.length) {
                 newIndex = 0;
             }
             
             switchWeapon(newIndex);
         }
 
-        // --- (NEW) 彈藥 UI 和裝填 (重構) ---
+        // --- 彈藥 UI 和裝填 (已重構) ---
         function updateAmmoUI() {
-            if (playerInventory.length === 0) return;
-            const currentWeapon = playerInventory[currentWeaponIndex];
+            if (playerEquippedWeapons.length === 0 || !playerEquippedWeapons[currentWeaponIndex]) {
+                 ammoText.textContent = `未裝備武器`;
+                 ammoBar.style.width = '0%';
+                return;
+            }
+            const currentWeapon = playerEquippedWeapons[currentWeaponIndex];
             
             if (isReloading) {
                 ammoText.textContent = `裝填中... (${currentWeapon.weapon.name})`;
@@ -1597,15 +2011,16 @@
             } else {
                 let ammo = currentWeapon.currentAmmo;
                 let mag = currentWeapon.weapon.magazineSize;
-                // 小刀和炸彈的特殊顯示
+                
                 if (currentWeapon.weapon.name === "小刀") {
                     ammoText.textContent = `小刀 (無限)`;
                     ammoBar.style.width = '100%';
                     return;
                 }
                 if (currentWeapon.weapon.name === "炸彈") {
-                    ammoText.textContent = `炸彈: ${ammo} / ${mag}`;
-                    ammoBar.style.width = (ammo / mag) * 100 + '%';
+                    const totalBombs = playerEquippedWeapons.find(w => w.weapon.name === "炸彈")?.currentAmmo || 0;
+                    ammoText.textContent = `炸彈: ${totalBombs}`;
+                    ammoBar.style.width = (totalBombs > 0) ? '100%' : '0%';
                     return;
                 }
                 
@@ -1616,10 +2031,9 @@
         }
         
         function startReload() {
-            if (isReloading) return; 
-            const currentWeapon = playerInventory[currentWeaponIndex];
+            if (isReloading || playerEquippedWeapons.length === 0 || !playerEquippedWeapons[currentWeaponIndex]) return; 
+            const currentWeapon = playerEquippedWeapons[currentWeaponIndex];
             
-            // (NEW) 小刀和炸彈不能裝填
             if (currentWeapon.weapon.reloadTime > 99999) return;
             
             isReloading = true;
@@ -1633,8 +2047,12 @@
         }
         
         function updatePauseMenuInfo() {
-            if (playerInventory.length === 0) return;
-            const stats = playerInventory[currentWeaponIndex].weapon;
+             if (playerEquippedWeapons.length === 0 || !playerEquippedWeapons[currentWeaponIndex]) {
+                pauseInfoGunStats.innerHTML = `<li>未裝備武器</li>`;
+                return;
+             }
+            const currentWeaponInv = playerEquippedWeapons[currentWeaponIndex];
+            const stats = currentWeaponInv.weapon;
             
             let ammoStats = `<li>彈匣: ${stats.magazineSize}</li>
                              <li>填彈: ${stats.reloadTime / 1000} s</li>`;
@@ -1644,7 +2062,7 @@
                              <li>填彈: N/A</li>`;
             }
             if (stats.name === "炸彈") {
-                ammoStats = `<li>持有: ${playerInventory[currentWeaponIndex].currentAmmo}</li>
+                ammoStats = `<li>持有: ${currentWeaponInv.currentAmmo}</li>
                              <li>填彈: N/A (消耗品)</li>`;
             }
 
@@ -1657,7 +2075,7 @@
             `;
         }
         
-        // (NEW) 炸彈邏輯
+        // 炸彈邏輯
         function spawnPlayerGrenade() {
             const playerPos = controls.getObject().position;
             const camDir = new THREE.Vector3();
@@ -1665,14 +2083,14 @@
 
             const grenade = {
                 mesh: new THREE.Mesh(grenadeGeometry, grenadeMaterial),
-                velocity: camDir.clone().multiplyScalar(15).add(new THREE.Vector3(0, 5, 0)), // 向上拋
-                timer: 3.0 // 3 秒後爆炸
+                velocity: camDir.clone().multiplyScalar(15).add(new THREE.Vector3(0, 5, 0)), 
+                timer: 3.0 
             };
             
             grenade.mesh.position.copy(playerPos).add(camDir.clone().multiplyScalar(1.0));
             
             scene.add(grenade.mesh);
-            objects.push(grenade.mesh); // 加到 objects 以便射擊 (雖然沒意義)
+            objects.push(grenade.mesh); 
             playerGrenades.push(grenade);
         }
         
@@ -1680,19 +2098,16 @@
             for (let i = playerGrenades.length - 1; i >= 0; i--) {
                 const grenade = playerGrenades[i];
                 
-                // 物理
                 grenade.velocity.y -= 9.8 * 2.0 * delta;
                 grenade.mesh.position.add(grenade.velocity.clone().multiplyScalar(delta));
                 
-                // 簡易地面碰撞
                 if (grenade.mesh.position.y < 0.2) {
                     grenade.mesh.position.y = 0.2;
-                    grenade.velocity.y *= -0.4; // 反彈
-                    grenade.velocity.x *= 0.8; // 摩擦力
+                    grenade.velocity.y *= -0.4; 
+                    grenade.velocity.x *= 0.8; 
                     grenade.velocity.z *= 0.8;
                 }
                 
-                // 計時
                 grenade.timer -= delta;
                 if (grenade.timer <= 0) {
                     explodeGrenade(grenade);
@@ -1708,7 +2123,6 @@
             const radius = WEAPONS.bomb.range;
             const damage = WEAPONS.bomb.damage;
             
-            // 簡易爆炸特效 (閃光)
             const flash = new THREE.Mesh(
                 new THREE.SphereGeometry(radius, 16, 16),
                 new THREE.MeshBasicMaterial({ color: 0xffff00, transparent: true, opacity: 0.8 })
@@ -1717,7 +2131,6 @@
             scene.add(flash);
             setTimeout(() => scene.remove(flash), 150);
             
-            // 範圍傷害
             for (const enemy of enemies) {
                 const distance = enemy.mesh.position.distanceTo(pos);
                 if (distance <= radius && !enemy.isInvincible) {
@@ -1732,7 +2145,6 @@
                     if (enemy.health <= 0) {
                         killEnemy(enemy);
                     } else {
-                        // 擊中特效
                         const originalColor = enemy.mesh.material.color.getHex();
                         enemy.mesh.material.color.set(0xffffff);
                         setTimeout(() => {
@@ -1745,11 +2157,11 @@
             }
         }
 
-        // --- 玩家戰鬥 (已更新) ---
+        // --- 玩家戰鬥 (已重構) ---
         function onShoot() {
-            if (!pauseMenu.classList.contains('hidden')) return;
+            if (!pauseMenu.classList.contains('hidden') || playerEquippedWeapons.length === 0 || !playerEquippedWeapons[currentWeaponIndex]) return;
             
-            const currentWeaponInv = playerInventory[currentWeaponIndex];
+            const currentWeaponInv = playerEquippedWeapons[currentWeaponIndex];
             const weapon = currentWeaponInv.weapon;
 
             if (isReloading) return; 
@@ -1765,13 +2177,11 @@
             }
             lastPlayerShootTime = time;
 
-            // (NEW) 根據武器類型決定行為
             if (weapon.name === "炸彈") {
                 spawnPlayerGrenade();
-                currentWeaponInv.currentAmmo--; // 消耗
+                currentWeaponInv.currentAmmo--; 
             }
             else if (weapon.name === "小刀") {
-                // 近戰 Raycast
                 const shootRaycaster = new THREE.Raycaster();
                 shootRaycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
                 const intersects = shootRaycaster.intersectObjects(objects); 
@@ -1788,10 +2198,8 @@
                         if (hitEnemy.health <= 0) killEnemy(hitEnemy);
                     }
                 }
-                // 小刀不消耗彈藥
             }
-            else if (weapon.name === "手槍") {
-                // 手槍 Raycast
+            else { // 所有其他槍枝
                 currentWeaponInv.currentAmmo--;
                 const shootRaycaster = new THREE.Raycaster();
                 shootRaycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
@@ -1852,8 +2260,6 @@
             isReloading = false; 
             isFiring = false; 
             
-            initWeapons(); // (NEW) 死亡時重置所有武器和彈藥
-            
             if (!isTouchDevice) {
                 controls.unlock();
             }
@@ -1874,9 +2280,9 @@
                     if (canJump === true) velocity.y += 15;
                     canJump = false;
                     break;
-                case 'Digit1': switchWeapon(0); break;
-                case 'Digit2': switchWeapon(1); break;
-                case 'Digit3': switchWeapon(2); break;
+                case 'Digit1': if (playerEquippedWeapons[0]) switchWeapon(0); break;
+                case 'Digit2': if (playerEquippedWeapons[1]) switchWeapon(1); break;
+                case 'Digit3': if (playerEquippedWeapons[2]) switchWeapon(2); break;
             }
         }
         function onKeyUp(event) {
@@ -2060,13 +2466,29 @@
         function spawnEnemyBullet(enemy) {
             const playerPos = controls.getObject().position;
             const enemyPos = enemy.mesh.position;
+            
             const bullet = {
                 mesh: new THREE.Mesh(bulletGeometry, bulletMaterial),
                 direction: playerPos.clone().sub(enemyPos).normalize(),
                 speed: 40,
                 life: 100 
             };
-            bullet.mesh.position.copy(enemyPos).y += (enemy.mesh.geometry.parameters.height / 2) * 0.8;
+            
+            const spawnPoint = new THREE.Vector3();
+            if (enemy.barrel) {
+                enemy.barrel.getWorldPosition(spawnPoint);
+                const dir = new THREE.Vector3();
+                enemy.barrel.getWorldDirection(dir);
+                spawnPoint.add(dir.multiplyScalar(1.0)); 
+            } else if (enemy.weaponMesh) {
+                enemy.weaponMesh.getWorldPosition(spawnPoint);
+            } else {
+                spawnPoint.copy(enemyPos).y += (enemy.mesh.geometry.parameters.height / 2) * 0.8;
+            }
+            
+            bullet.mesh.position.copy(spawnPoint);
+            bullet.direction = playerPos.clone().add(new THREE.Vector3(0, PLAYER_HEIGHT/2, 0)).sub(spawnPoint).normalize(); 
+            
             scene.add(bullet.mesh);
             enemyBullets.push(bullet);
         }
@@ -2094,6 +2516,8 @@
         // --- AI ---
         function updateEnemies(time, delta) {
             const playerPos = controls.getObject().position;
+            const playerHeadPos = playerPos.clone().add(new THREE.Vector3(0, PLAYER_HEIGHT, 0));
+            
             for (let i = enemies.length - 1; i >= 0; i--) { 
                 const enemy = enemies[i];
                 const enemyPos = enemy.mesh.position;
@@ -2107,6 +2531,10 @@
                     enemy.mesh.position.y = groundY;
                     enemy.velocity.y = 0;
                     enemy.canJump = true;
+                }
+                
+                if (enemy.turret) {
+                    enemy.turret.lookAt(playerHeadPos);
                 }
                 
                 if (enemy.type === 'boss') {
@@ -2164,7 +2592,9 @@
                 else if (distance > 1.5 && distance < 100) { 
                     const dirToPlayer = playerPos.clone().sub(enemyPos).normalize();
                     dirToPlayer.y = 0; 
-                    enemy.mesh.lookAt(playerPos.x, enemyPos.y, playerPos.z);
+                    if (enemy.type !== 'tank') {
+                        enemy.mesh.lookAt(playerPos.x, enemyPos.y, playerPos.z);
+                    }
                     
                     let canMove = true;
                     enemyRaycaster.far = (enemy.mesh.geometry.parameters.width / 2) + 0.5;
@@ -2201,8 +2631,14 @@
                 
                 if (distance < enemy.attackRange && time > enemy.lastAttackTime + enemy.attackCooldown) {
                     enemy.lastAttackTime = time;
-                    const dirToPlayer = playerPos.clone().sub(enemyPos).normalize();
-                    enemyRaycaster.set(enemyPos, dirToPlayer); // 修正 v21 的錯字 dirToPlaver
+                    
+                    const spawnPoint = new THREE.Vector3();
+                    if (enemy.barrel) enemy.barrel.getWorldPosition(spawnPoint);
+                    else if (enemy.weaponMesh) enemy.weaponMesh.getWorldPosition(spawnPoint);
+                    else spawnPoint.copy(enemyPos);
+                    
+                    const dirToPlayer = playerHeadPos.clone().sub(spawnPoint).normalize();
+                    enemyRaycaster.set(spawnPoint, dirToPlayer); 
                     enemyRaycaster.far = enemy.attackRange;
                     const obstacleHits = enemyRaycaster.intersectObjects(obstacles);
                     if (obstacleHits.length === 0 || obstacleHits[0].distance > distance) {
@@ -2252,7 +2688,7 @@
             }
         }
 
-        // --- 遊戲主循環 (已更新) ---
+        // --- 遊戲主循環 ---
         function animate() {
             requestAnimationFrame(animate);
 
@@ -2262,7 +2698,8 @@
             const gameIsActive = (controls.isLocked || (isTouchDevice && blocker.classList.contains('hidden'))) && 
                                   pauseMenu.classList.contains('hidden') &&
                                   deathScreenElement.classList.contains('hidden') &&
-                                  winScreenMenu.classList.contains('hidden');
+                                  winScreenMenu.classList.contains('hidden') &&
+                                  hubMenu.classList.contains('hidden'); 
 
             if (gameIsActive && enemies.length === 0 && playerHealth > 0) {
                 showWinScreen();
@@ -2299,7 +2736,7 @@
 
                 updateEnemies(time, delta);
                 updateEnemyBullets(delta);
-                updatePlayerGrenades(delta); // (NEW)
+                updatePlayerGrenades(delta); 
                 
                 updateTargetHud();
                 updateBossHud();
